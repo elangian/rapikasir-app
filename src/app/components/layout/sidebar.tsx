@@ -52,8 +52,8 @@ export function SidebarContent({
   const displayStore = store?.name || STORE_NAME;
   const displayOwner = store?.ownerName || OWNER_NAME;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     onNavigate?.();
     navigate("/");
   };

@@ -1,114 +1,197 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { useTier, type Tier } from "./tier-context";
-
-const STORAGE_KEY = "rapikasir.auth";
+import { supabase } from "../lib/supabase";
 
 export interface StoreProfile {
   name: string;
   ownerName: string;
   category: string;
   categoryLabel: string;
-  phone?: string;
   productQty?: string;
 }
 
 interface AuthUser {
+  id: string;
   name: string;
   email: string;
 }
 
 type AuthStatus = "guest" | "authed";
 
-interface StoredAuth {
+interface StoreRow {
+  id: string;
+  store_name: string;
+  owner_name: string;
+  category: string | null;
+  category_label: string | null;
+  tier: Tier;
+  onboarded: boolean;
+}
+
+interface AuthContextValue {
   status: AuthStatus;
   onboarded: boolean;
+  loading: boolean;
   user: AuthUser | null;
   store: StoreProfile | null;
+  register: (input: { storeName: string; email: string; password: string; tier: Tier }) => Promise<void>;
+  login: (input: { email: string; password: string }) => Promise<void>;
+  completeOnboarding: (store: StoreProfile) => Promise<void>;
+  logout: () => Promise<void>;
 }
-
-interface AuthContextValue extends StoredAuth {
-  register: (input: { storeName: string; email: string; password: string; tier: Tier }) => void;
-  login: (input: { email: string; password: string }) => void;
-  completeOnboarding: (store: StoreProfile) => void;
-  logout: () => void;
-}
-
-const DEFAULT_STATE: StoredAuth = {
-  status: "guest",
-  onboarded: false,
-  user: null,
-  store: null,
-};
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function loadStored(): StoredAuth {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_STATE, ...parsed };
-  } catch {
-    return DEFAULT_STATE;
+async function fetchStoreRow(userId: string): Promise<StoreRow | null> {
+  const { data, error } = await supabase.from("stores").select("*").eq("id", userId).maybeSingle();
+  if (error) {
+    console.error("Gagal ambil data toko:", error.message);
+    return null;
   }
+  return data as StoreRow | null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { setTier } = useTier();
-  const [state, setState] = useState<StoredAuth>(DEFAULT_STATE);
-  const [hydrated, setHydrated] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [storeRow, setStoreRow] = useState<StoreRow | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Init from localStorage on mount (client-only).
   useEffect(() => {
-    setState(loadStored());
-    setHydrated(true);
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!mounted) return;
+      setSession(data.session);
+      if (data.session?.user) {
+        const row = await fetchStoreRow(data.session.user.id);
+        if (!mounted) return;
+        setStoreRow(row);
+        if (row) setTier(row.tier);
+      }
+      if (mounted) setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        const row = await fetchStoreRow(newSession.user.id);
+        setStoreRow(row);
+        if (row) setTier(row.tier);
+      } else {
+        setStoreRow(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist on every change, after initial hydration.
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state, hydrated]);
+  const register: AuthContextValue["register"] = async ({ storeName, email, password, tier }) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    if (!data.user) throw new Error("Registrasi gagal, coba lagi.");
 
-  const register: AuthContextValue["register"] = ({ storeName, email, tier }) => {
-    setTier(tier);
-    setState({
-      status: "authed",
+    const { error: insertError } = await supabase.from("stores").insert({
+      id: data.user.id,
+      store_name: storeName,
+      owner_name: storeName,
+      tier,
       onboarded: false,
-      user: { name: storeName || "Pemilik Toko", email },
-      store: null,
+    });
+    if (insertError) throw insertError;
+
+    setTier(tier);
+    setStoreRow({
+      id: data.user.id,
+      store_name: storeName,
+      owner_name: storeName,
+      category: null,
+      category_label: null,
+      tier,
+      onboarded: false,
     });
   };
 
-  const login: AuthContextValue["login"] = ({ email }) => {
-    // Demo mode: any email/password combination is accepted.
-    setState((prev) => ({
-      status: "authed",
-      onboarded: true,
-      user: prev.user ?? { name: "Pemilik Toko", email },
-      store: prev.store ?? {
-        name: "Toko Demo",
-        ownerName: "Pemilik Toko",
-        category: "lainnya",
-        categoryLabel: "Lainnya",
-      },
-    }));
+  const login: AuthContextValue["login"] = async ({ email, password }) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   };
 
-  const completeOnboarding: AuthContextValue["completeOnboarding"] = (store) => {
-    setState((prev) => ({ ...prev, onboarded: true, store }));
+  const completeOnboarding: AuthContextValue["completeOnboarding"] = async (storeInput) => {
+    if (!session?.user) throw new Error("Belum login.");
+
+    const { error } = await supabase
+      .from("stores")
+      .update({
+        store_name: storeInput.name,
+        owner_name: storeInput.ownerName,
+        category: storeInput.category,
+        category_label: storeInput.categoryLabel,
+        onboarded: true,
+      })
+      .eq("id", session.user.id);
+    if (error) throw error;
+
+    setStoreRow((prev) =>
+      prev
+        ? {
+            ...prev,
+            store_name: storeInput.name,
+            owner_name: storeInput.ownerName,
+            category: storeInput.category,
+            category_label: storeInput.categoryLabel,
+            onboarded: true,
+          }
+        : prev,
+    );
   };
 
-  const logout = () => {
-    setState(DEFAULT_STATE);
-    localStorage.removeItem(STORAGE_KEY);
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
+
+  const user: AuthUser | null = session?.user
+    ? { id: session.user.id, name: storeRow?.owner_name || "Pemilik Toko", email: session.user.email ?? "" }
+    : null;
+
+  const store: StoreProfile | null = storeRow
+    ? {
+        name: storeRow.store_name,
+        ownerName: storeRow.owner_name,
+        category: storeRow.category || "lainnya",
+        categoryLabel: storeRow.category_label || "Lainnya",
+      }
+    : null;
 
   return (
-    <AuthContext.Provider value={{ ...state, register, login, completeOnboarding, logout }}>
-      {hydrated ? children : null}
+    <AuthContext.Provider
+      value={{
+        status: session ? "authed" : "guest",
+        onboarded: storeRow?.onboarded ?? false,
+        loading,
+        user,
+        store,
+        register,
+        login,
+        completeOnboarding,
+        logout,
+      }}
+    >
+      {loading ? <AuthLoadingScreen /> : children}
     </AuthContext.Provider>
+  );
+}
+
+function AuthLoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="size-8 animate-spin rounded-full border-4 border-border border-t-accent" />
+    </div>
   );
 }
 

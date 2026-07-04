@@ -16,6 +16,7 @@ import {
   Wrench,
   Ellipsis,
   Package,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../context/auth-context";
@@ -79,10 +80,13 @@ export function Onboarding() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const finish = () => {
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const finish = async () => {
+    setErrorMsg(null);
     setFinishing(true);
-    setTimeout(() => {
-      completeOnboarding({
+    try {
+      await completeOnboarding({
         name: storeName.trim() || "Tokomu",
         ownerName: user?.name || "Pemilik Toko",
         category: category || "lainnya",
@@ -90,7 +94,10 @@ export function Onboarding() {
         productQty: qty || undefined,
       });
       navigate("/");
-    }, 600);
+    } catch (err) {
+      setFinishing(false);
+      setErrorMsg(err instanceof Error ? err.message : "Gagal menyimpan profil toko. Coba lagi.");
+    }
   };
 
   return (
@@ -285,6 +292,12 @@ export function Onboarding() {
                   </div>
                 </dl>
 
+                {errorMsg && (
+                  <div className="mt-5 flex items-start gap-2 rounded-md border-2 border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    {errorMsg}
+                  </div>
+                )}
                 <div className="mt-7 flex items-center justify-between gap-3">
                   <button
                     type="button"

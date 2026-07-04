@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, ShieldCheck, Users, Zap } from "lucide-react";
-import { AuthShell } from "../components/auth/auth-shell";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, ShieldCheck, Users, Zap, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/auth-context";
+import { AuthShell } from "../components/auth/auth-shell";
 
 export function Login() {
   const navigate = useNavigate();
@@ -12,16 +12,21 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 
-  const handleSubmit = (e: React.FormEvent) => {
+ const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     setStatus("loading");
-    setTimeout(() => {
-      login({ email, password });
+    try {
+      await login({ email, password });
       setStatus("done");
       setTimeout(() => navigate("/"), 500);
-    }, 700);
+    } catch (err) {
+      setStatus("idle");
+      setErrorMsg(err instanceof Error ? err.message : "Gagal masuk. Coba lagi.");
+    }
   };
-
   return (
     <AuthShell
       headline="Semua transaksi tokomu, rapi dalam satu tempat."
@@ -45,6 +50,12 @@ export function Login() {
             <h1 className="font-display text-2xl font-bold tracking-tight">Masuk ke RapiKasir</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">Kelola transaksi dan lihat performa tokomu.</p>
 
+            {errorMsg && (
+              <div className="mt-4 flex items-start gap-2 rounded-md border-2 border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                {errorMsg}
+              </div>
+            )}
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="email" className="mb-1.5 block text-sm font-medium">Email</label>
@@ -107,7 +118,7 @@ export function Login() {
                 )}
               </button>
 
-              <p className="text-center text-xs text-muted-foreground">Mode demo: email dan kata sandi apa pun akan diterima.</p>
+              
             </form>
           </>
         )}

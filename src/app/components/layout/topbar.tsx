@@ -1,5 +1,5 @@
 import { Bell, Search, ChevronDown, Menu } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { Input } from "../ui/input";
 import {
   Select,
@@ -118,8 +118,12 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
               <span className="text-xs font-normal text-muted-foreground">{displayStore}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profil Toko</DropdownMenuItem>
-            <DropdownMenuItem>Pengaturan</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/profil-toko">Profil Toko</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/pengaturan">Pengaturan</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               Keluar

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, ShieldCheck, Users, Zap, AlertCircle } from "lucide-react";
-import { useAuth } from "../context/auth-context";
 import { AuthShell } from "../components/auth/auth-shell";
+import { useAuth } from "../context/auth-context";
 
 export function Login() {
   const navigate = useNavigate();
@@ -11,8 +11,7 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
-
- const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +26,7 @@ export function Login() {
       setErrorMsg(err instanceof Error ? err.message : "Gagal masuk. Coba lagi.");
     }
   };
+
   return (
     <AuthShell
       headline="Semua transaksi tokomu, rapi dalam satu tempat."
@@ -56,6 +56,7 @@ export function Login() {
                 {errorMsg}
               </div>
             )}
+
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="email" className="mb-1.5 block text-sm font-medium">Email</label>
@@ -117,8 +118,6 @@ export function Login() {
                   </>
                 )}
               </button>
-
-              
             </form>
           </>
         )}

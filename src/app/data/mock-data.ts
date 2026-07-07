@@ -306,3 +306,126 @@ export const ADMIN_TRANSACTIONS = [
   { time: "30 Jun 2026, 20:10", store: "Toko Kue Manis Legit", tier: "PRO" as Tier, amount: 25000, method: "DANA", status: "sukses" as const },
   { time: "30 Jun 2026, 17:36", store: "Apotek Sehat Keluarga", tier: "BUSINESS" as Tier, amount: 75000, method: "BCA", status: "gagal" as const },
 ];
+
+// ---------- Laporan: 4 mode periode (Harian / Mingguan / Bulanan / Tahunan) ----------
+
+export interface ReportSummary {
+  periodLabel: string;
+  totalRevenue: number;
+  revenueTrendPct: number;
+  totalTransactions: number;
+  transactionsTrendPct: number;
+  grossProfit: number;
+  grossMarginPct: number;
+  netProfit: number;
+  netMarginPct: number;
+}
+
+export type ReportPeriod = "harian" | "mingguan" | "bulanan" | "tahunan";
+
+export interface PeriodReportData {
+  summary: ReportSummary;
+  trend: { label: string; revenue: number }[];
+  trendTitle: string;
+  topProducts: ReportProductRow[];
+}
+
+export const DAILY_REPORT: PeriodReportData = {
+  summary: {
+    periodLabel: "Hari ini, 2 Jul 2026",
+    totalRevenue: 2850000,
+    revenueTrendPct: 6.5,
+    totalTransactions: 64,
+    transactionsTrendPct: 4.0,
+    grossProfit: 1140000,
+    grossMarginPct: 40.0,
+    netProfit: 723900,
+    netMarginPct: 25.4,
+  },
+  trendTitle: "Tren Pendapatan (14 Hari Terakhir)",
+  trend: Array.from({ length: 14 }, (_, i) => ({
+    label: i === 13 ? "Ini" : `H-${13 - i}`,
+    revenue: Math.round(2500 + Math.sin(i / 2) * 300 + i * 15),
+  })),
+  topProducts: [
+    { name: "Kopi Susu Gula Aren", sold: 22, revenue: 396000, profit: 198000 },
+    { name: "Es Teh Manis", sold: 34, revenue: 170000, profit: 119000 },
+    { name: "Nasi Goreng Spesial", sold: 15, revenue: 330000, profit: 150000 },
+    { name: "Ayam Geprek Sambal", sold: 12, revenue: 276000, profit: 120000 },
+    { name: "Mie Ayam Bakso", sold: 10, revenue: 200000, profit: 90000 },
+  ],
+};
+
+export const WEEKLY_REPORT: PeriodReportData = {
+  summary: {
+    periodLabel: "Minggu ini, 29 Jun–2 Jul 2026",
+    totalRevenue: 19800000,
+    revenueTrendPct: 8.1,
+    totalTransactions: 431,
+    transactionsTrendPct: 5.3,
+    grossProfit: 7920000,
+    grossMarginPct: 40.0,
+    netProfit: 5029200,
+    netMarginPct: 25.4,
+  },
+  trendTitle: "Tren Pendapatan (12 Minggu Terakhir)",
+  trend: Array.from({ length: 12 }, (_, i) => ({
+    label: i === 11 ? "Ini" : `M-${11 - i}`,
+    revenue: Math.round(16000 + Math.sin(i / 2) * 2200 + i * 350),
+  })),
+  topProducts: [
+    { name: "Kopi Susu Gula Aren", sold: 148, revenue: 2664000, profit: 1332000 },
+    { name: "Nasi Goreng Spesial", sold: 102, revenue: 2244000, profit: 1020000 },
+    { name: "Es Teh Manis", sold: 230, revenue: 1150000, profit: 805000 },
+    { name: "Ayam Geprek Sambal", sold: 84, revenue: 1932000, profit: 840000 },
+    { name: "Mie Ayam Bakso", sold: 70, revenue: 1400000, profit: 630000 },
+  ],
+};
+
+export const YEARLY_REPORT: PeriodReportData = {
+  summary: {
+    periodLabel: "2026 (Jan–Jun)",
+    totalRevenue: 458000000,
+    revenueTrendPct: 22.5,
+    totalTransactions: 9850,
+    transactionsTrendPct: 18.0,
+    grossProfit: 183200000,
+    grossMarginPct: 40.0,
+    netProfit: 116332000,
+    netMarginPct: 25.4,
+  },
+  trendTitle: "Tren Pendapatan (12 Bulan Terakhir)",
+  trend: ["Jul", "Ags", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun"].map((label, i) => ({
+    label,
+    revenue: Math.round(28000 + Math.sin(i / 3) * 4000 + i * 2600),
+  })),
+  topProducts: [
+    { name: "Kopi Susu Gula Aren", sold: 6280, revenue: 113040000, profit: 56520000 },
+    { name: "Nasi Goreng Spesial", sold: 4380, revenue: 96360000, profit: 43800000 },
+    { name: "Es Teh Manis", sold: 9860, revenue: 49300000, profit: 34510000 },
+    { name: "Ayam Geprek Sambal", sold: 3640, revenue: 83720000, profit: 36400000 },
+    { name: "Mie Ayam Bakso", sold: 3080, revenue: 61600000, profit: 27720000 },
+    { name: "Beras Premium 5kg", sold: 1420, revenue: 102240000, profit: 12780000 },
+  ],
+};
+
+export const MONTHLY_REPORT: PeriodReportData = {
+  summary: REPORT_SUMMARY,
+  trendTitle: "Tren Pendapatan (30 Hari)",
+  trend: REVENUE_TREND_30D.map((p) => ({ label: String(p.day), revenue: p.revenue })),
+  topProducts: REPORT_TOP_PRODUCTS,
+};
+
+export const REPORTS_BY_PERIOD: Record<ReportPeriod, PeriodReportData> = {
+  harian: DAILY_REPORT,
+  mingguan: WEEKLY_REPORT,
+  bulanan: MONTHLY_REPORT,
+  tahunan: YEARLY_REPORT,
+};
+
+export const REPORT_PERIOD_LABEL: Record<ReportPeriod, string> = {
+  harian: "Harian",
+  mingguan: "Mingguan",
+  bulanan: "Bulanan",
+  tahunan: "Tahunan",
+};

@@ -19,6 +19,7 @@ interface AuthUser {
 
 type AuthStatus = "guest" | "authed";
 
+/** Row shape of the `stores` table (see SQL schema in the Supabase tutorial). */
 interface StoreRow {
   id: string;
   store_name: string;
@@ -35,9 +36,10 @@ interface AuthContextValue {
   loading: boolean;
   user: AuthUser | null;
   store: StoreProfile | null;
-  register: (input: { storeName: string; email: string; password: string; tier: Tier }) => Promise<void>;
+  register: (input: { storeName: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
   completeOnboarding: (store: StoreProfile) => Promise<void>;
+  updateTier: (tier: Tier) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -58,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storeRow, setStoreRow] = useState<StoreRow | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Bootstrap: restore existing session (if any) once on mount, then keep
+  // listening for sign-in / sign-out / token-refresh events.
   useEffect(() => {
     let mounted = true;
 
@@ -91,28 +95,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const register: AuthContextValue["register"] = async ({ storeName, email, password, tier }) => {
+  const register: AuthContextValue["register"] = async ({ storeName, email, password }) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
     if (!data.user) throw new Error("Registrasi gagal, coba lagi.");
 
+    // Always start on FREE — a paid tier is only granted after payment
+    // actually completes (see onboarding.tsx -> /pembayaran redirect).
     const { error: insertError } = await supabase.from("stores").insert({
       id: data.user.id,
       store_name: storeName,
       owner_name: storeName,
-      tier,
+      tier: "FREE",
       onboarded: false,
     });
     if (insertError) throw insertError;
 
-    setTier(tier);
+    setTier("FREE");
     setStoreRow({
       id: data.user.id,
       store_name: storeName,
       owner_name: storeName,
       category: null,
       category_label: null,
-      tier,
+      tier: "FREE",
       onboarded: false,
     });
   };
@@ -120,6 +126,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login: AuthContextValue["login"] = async ({ email, password }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+  };
+
+  const updateTier: AuthContextValue["updateTier"] = async (tier) => {
+    if (!session?.user) {
+      // No real session (shouldn't normally happen inside the authed app) —
+      // fall back to local-only so the UI doesn't hard-crash.
+      setTier(tier);
+      return;
+    }
+    const { error } = await supabase.from("stores").update({ tier }).eq("id", session.user.id);
+    if (error) throw error;
+    setTier(tier);
+    setStoreRow((prev) => (prev ? { ...prev, tier } : prev));
   };
 
   const completeOnboarding: AuthContextValue["completeOnboarding"] = async (storeInput) => {
@@ -179,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         login,
         completeOnboarding,
+        updateTier,
         logout,
       }}
     >
@@ -187,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Shown once, briefly, while we check if there's an existing Supabase session. */
 function AuthLoadingScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

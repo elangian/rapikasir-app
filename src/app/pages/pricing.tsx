@@ -10,22 +10,30 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useTier, type Tier, TIER_LABEL } from "../context/tier-context";
+import { useAuth } from "../context/auth-context";
 import { PLANS, FEATURE_MATRIX, type Plan } from "../data/mock-data";
 import { toast } from "sonner";
 
 export function Pricing() {
-  const { tier, setTier } = useTier();
+  const { tier } = useTier();
+  const { updateTier } = useAuth();
   const navigate = useNavigate();
 
-  const choose = (plan: Plan) => {
+  const choose = async (plan: Plan) => {
     if (plan.price > 0) {
       navigate(`/pembayaran?plan=${plan.tier}`);
       return;
     }
-    setTier(plan.tier);
-    toast.success(`Paket ${plan.name} aktif`, {
-      description: "Mode demo — fitur di seluruh aplikasi ikut menyesuaikan.",
-    });
+    try {
+      await updateTier(plan.tier);
+      toast.success(`Paket ${plan.name} aktif`, {
+        description: "Perubahan tersimpan ke akunmu.",
+      });
+    } catch (err) {
+      toast.error("Gagal mengganti paket", {
+        description: err instanceof Error ? err.message : "Coba lagi.",
+      });
+    }
   };
 
   return (

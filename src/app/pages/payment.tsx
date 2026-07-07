@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Check, Copy, Timer, Clock, CheckCircle2, XCircle, Wallet, Landmark, Loader2 } from "lucide-react";
 import { useTier, type Tier } from "../context/tier-context";
+import { useAuth } from "../context/auth-context";
 import { EWALLET_METHODS, BANK_METHODS } from "../data/mock-data";
 import { formatIDR } from "../lib/format";
 import { toast } from "sonner";
@@ -21,7 +22,7 @@ const STATUS_META: Record<PaymentStatus, { label: string; icon: typeof Clock; cl
 
 export function Payment() {
   const navigate = useNavigate();
-  const { setTier } = useTier();
+  const { updateTier } = useAuth();
   const [searchParams] = useSearchParams();
 
   const initialPlan = (searchParams.get("plan") || "PRO").toUpperCase();
@@ -59,13 +60,20 @@ export function Payment() {
 
   const confirmPayment = () => {
     setConfirming(true);
-    setTimeout(() => {
-      setStatus("success");
-      setConfirming(false);
-      setTier(plan as Tier);
-      toast.success(`Paket ${current.name} aktif`, {
-        description: "Pembayaran terkonfirmasi. Fitur di seluruh aplikasi sudah ter-upgrade.",
-      });
+    setTimeout(async () => {
+      try {
+        await updateTier(plan as Tier);
+        setStatus("success");
+        toast.success(`Paket ${current.name} aktif`, {
+          description: "Pembayaran terkonfirmasi. Fitur di seluruh aplikasi sudah ter-upgrade.",
+        });
+      } catch (err) {
+        toast.error("Gagal mengaktifkan paket", {
+          description: err instanceof Error ? err.message : "Coba lagi.",
+        });
+      } finally {
+        setConfirming(false);
+      }
     }, 1200);
   };
 

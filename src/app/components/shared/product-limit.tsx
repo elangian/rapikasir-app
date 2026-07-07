@@ -2,12 +2,13 @@ import { Link } from "react-router";
 import { Infinity as InfinityIcon } from "lucide-react";
 import { cn } from "../ui/utils";
 import { useTier } from "../../context/tier-context";
-import { PRODUCTS } from "../../data/mock-data";
+import { useProducts } from "../../context/products-context";
 
 /** Number of products currently in use across the app. */
 export function useProductUsage() {
   const { productLimit } = useTier();
-  const used = PRODUCTS.length;
+  const { products } = useProducts();
+  const used = products.length;
   const unlimited = !Number.isFinite(productLimit);
   const ratio = unlimited ? 0 : used / productLimit;
   const level: "ok" | "warn" | "full" = ratio >= 0.9 ? "full" : ratio >= 0.75 ? "warn" : "ok";

@@ -2,15 +2,19 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
 import { TierProvider } from "./context/tier-context";
 import { AuthProvider, useAuth } from "./context/auth-context";
+import { ProductsProvider } from "./context/products-context";
 import { Sidebar, SidebarContent } from "./components/layout/sidebar";
 import { Topbar } from "./components/layout/topbar";
 import { ComingSoon } from "./components/shared/coming-soon";
 import { Toaster } from "./components/ui/sonner";
 import { MobileDrawer } from "./components/shared/mobile-drawer";
+import { AdminGate } from "./components/layout/admin-gate";
 import { Dashboard } from "./pages/dashboard";
 import { POS } from "./pages/pos";
 import { Pricing } from "./pages/pricing";
 import { Produk } from "./pages/produk";
+import { Stok } from "./pages/stok";
+import { ProfilToko } from "./pages/profil-toko";
 import { Laporan } from "./pages/laporan";
 import { Landing } from "./pages/landing";
 import { Login } from "./pages/login";
@@ -26,27 +30,29 @@ function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Desktop rail */}
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+    <ProductsProvider>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        {/* Desktop rail */}
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
 
-      {/* Mobile off-canvas drawer */}
-      <MobileDrawer
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        side="left"
-        title="Menu navigasi"
-      >
-        <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
-      </MobileDrawer>
+        {/* Mobile off-canvas drawer */}
+        <MobileDrawer
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          side="left"
+          title="Menu navigasi"
+        >
+          <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+        </MobileDrawer>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 md:p-6">
-          <Outlet />
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar onMenuClick={() => setMobileOpen(true)} />
+          <main className="flex-1 p-4 md:p-6">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </ProductsProvider>
   );
 }
 
@@ -59,6 +65,9 @@ function AppLayout() {
  * Admin (06a/b/c) is a separate internal tool, not gated behind the
  * consumer auth flow — same as the original static prototype, where
  * "Keluar" on the admin pages just links back to the marketing site.
+ * It IS wrapped in <AdminGate> (passphrase check) in all three branches
+ * below since it's reachable on the public deployed URL — see
+ * admin-gate.tsx for exactly what that does and doesn't protect against.
  */
 function AppRoutes() {
   const { status, onboarded } = useAuth();
@@ -69,9 +78,9 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+        <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
+        <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -81,9 +90,9 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+        <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
+        <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
         <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
@@ -92,9 +101,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/pembayaran" element={<Payment />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/users" element={<AdminUsers />} />
-      <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+      <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+      <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
+      <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Navigate to="/" replace />} />
       <Route element={<AppLayout />}>
@@ -102,7 +111,8 @@ function AppRoutes() {
         <Route path="transaksi" element={<POS />} />
         <Route path="paket" element={<Pricing />} />
         <Route path="produk" element={<Produk />} />
-        <Route path="stok" element={<ComingSoon title="Stok" />} />
+        <Route path="stok" element={<Stok />} />
+        <Route path="profil-toko" element={<ProfilToko />} />
         <Route path="laporan" element={<Laporan />} />
         <Route path="pengaturan" element={<ComingSoon title="Pengaturan" />} />
         <Route path="*" element={<ComingSoon title="Halaman tidak ditemukan" />} />

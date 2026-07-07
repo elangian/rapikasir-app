@@ -17,7 +17,8 @@ import { MobileDrawer } from "../components/shared/mobile-drawer";
 import { cn } from "../components/ui/utils";
 import { TierLock, TierBadge } from "../components/shared/tier-lock";
 import { useTier } from "../context/tier-context";
-import { PRODUCTS, CATEGORIES, type Product } from "../data/mock-data";
+import { useProducts } from "../context/products-context";
+import { CATEGORIES, type Product } from "../data/mock-data";
 import { formatIDR } from "../lib/format";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ type PayMethod = "Cash" | "Transfer" | "QRIS";
 
 export function POS() {
   const { tier, canUse } = useTier();
+  const { products } = useProducts();
   const [category, setCategory] = useState("Semua");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -45,12 +47,12 @@ export function POS() {
 
   const filtered = useMemo(
     () =>
-      PRODUCTS.filter(
+      products.filter(
         (p) =>
           (category === "Semua" || p.category === category) &&
           p.name.toLowerCase().includes(query.toLowerCase()),
       ),
-    [category, query],
+    [products, category, query],
   );
 
   const addToCart = (p: Product) => {

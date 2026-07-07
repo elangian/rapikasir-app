@@ -21,16 +21,18 @@ export function Register() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
- const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSubmitting(true);
     try {
-      await register({ storeName, email, password, tier });
-      navigate("/onboarding");
+      await register({ storeName, email, password });
+      // Akun baru selalu mulai di FREE (lihat auth-context.tsx). Kalau yang
+      // dipilih di form ini paket berbayar, bawa niatnya lewat query param
+      // supaya onboarding.tsx bisa arahin ke /pembayaran setelah selesai.
+      navigate(tier === "FREE" ? "/onboarding" : `/onboarding?intendedTier=${tier}`);
     } catch (err) {
       setSubmitting(false);
       setErrorMsg(err instanceof Error ? err.message : "Registrasi gagal. Coba lagi.");
@@ -55,6 +57,7 @@ export function Register() {
           <div className="rounded-lg border-2 border-border bg-card p-6 shadow-brutal sm:p-8 md:p-10">
             <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Daftar RapiKasir</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">Mulai gratis, tanpa kartu kredit. Upgrade kapan saja.</p>
+
             {errorMsg && (
               <div className="mt-4 flex items-start gap-2 rounded-md border-2 border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />

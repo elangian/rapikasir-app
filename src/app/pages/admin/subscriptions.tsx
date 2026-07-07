@@ -1,9 +1,21 @@
 import { useMemo, useState } from "react";
-import { Download, TrendingUp, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Download, TrendingUp, CheckCircle2, Clock, XCircle, Trash2 } from "lucide-react";
 import { AdminLayout } from "../../components/layout/admin-layout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../components/ui/alert-dialog";
 import { ADMIN_TRANSACTIONS } from "../../data/mock-data";
 import { formatIDR } from "../../lib/format";
 import type { Tier } from "../../context/tier-context";
+import { toast } from "sonner";
 
 const TIER_LABEL: Record<"PRO" | "BUSINESS", string> = { PRO: "Pro", BUSINESS: "Business" };
 const TIER_CLASS: Record<"PRO" | "BUSINESS", string> = {
@@ -17,6 +29,7 @@ const STATUS_META = {
 } as const;
 
 export function AdminSubscriptions() {
+  const [transactions, setTransactions] = useState(() => ADMIN_TRANSACTIONS.map((t, i) => ({ ...t, id: i })));
   const [methodFilter, setMethodFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState<Tier | "all">("all");
   const [statusFilter, setStatusFilter] = useState<keyof typeof STATUS_META | "all">("all");
@@ -24,14 +37,29 @@ export function AdminSubscriptions() {
 
   const filtered = useMemo(
     () =>
-      ADMIN_TRANSACTIONS.filter(
+      transactions.filter(
         (t) =>
           (methodFilter === "all" || t.method === methodFilter) &&
           (tierFilter === "all" || t.tier === tierFilter) &&
           (statusFilter === "all" || t.status === statusFilter),
       ),
-    [methodFilter, tierFilter, statusFilter],
+    [transactions, methodFilter, tierFilter, statusFilter],
   );
+
+  const totalRevenue = useMemo(
+    () => transactions.filter((t) => t.status === "sukses").reduce((sum, t) => sum + t.amount, 0),
+    [transactions],
+  );
+
+  const removeOne = (id: number, store: string) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+    toast.success("Transaksi dihapus", { description: store });
+  };
+
+  const removeAll = () => {
+    setTransactions([]);
+    toast.success("Semua transaksi dihapus", { description: "Daftar Monitor Subscription sekarang kosong (sesi ini saja)." });
+  };
 
   const handleExport = () => {
     const header = ["Waktu", "Toko", "Tier", "Jumlah (IDR)", "Metode", "Status"];
@@ -61,23 +89,56 @@ export function AdminSubscriptions() {
       pageTitle="Monitor Subscription"
       pageSubtitle="Transaksi pembayaran paket UMKM"
       headerAction={
-        <button
-          onClick={handleExport}
-          className="press-scale flex items-center gap-2 rounded-md border-2 border-border bg-accent px-3.5 py-2 text-xs font-semibold text-accent-foreground shadow-brutal-amber-sm"
-        >
-          <Download className="size-3.5" /> <span>{exportLabel}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="press-scale flex items-center gap-2 rounded-md border-2 border-border bg-accent px-3.5 py-2 text-xs font-semibold text-accent-foreground shadow-brutal-amber-sm"
+          >
+            <Download className="size-3.5" /> <span>{exportLabel}</span>
+          </button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={transactions.length === 0}
+                className="press-scale flex items-center gap-2 rounded-md border-2 border-destructive/50 bg-admin-bg px-3.5 py-2 text-xs font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="size-3.5" /> Hapus Semua
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-2 border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Hapus semua transaksi?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Ini cuma data contoh (mock) di sesi browser ini — bukan tabel pembayaran asli di Supabase, jadi
+                  refresh halaman akan mengembalikannya seperti semula.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={removeAll}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Ya, Hapus Semua
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       }
     >
       {/* Revenue metric */}
       <div className="mb-4 flex flex-col gap-4 rounded-md border-2 border-accent bg-admin-surface p-5 shadow-brutal-amber sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-admin-foreground/70">Pendapatan Juni 2026</p>
-          <p className="font-display tnum mt-1 text-4xl font-extrabold tracking-tight">{formatIDR(36_750_000)}</p>
+          <p className="text-sm font-medium text-admin-foreground/70">Pendapatan (transaksi sukses)</p>
+          <p className="font-display tnum mt-1 text-4xl font-extrabold tracking-tight">{formatIDR(totalRevenue)}</p>
         </div>
-        <span className="flex w-fit items-center gap-1 rounded-md border-2 border-border bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground">
-          <TrendingUp className="size-3.5" /> +9,4% dari Mei 2026
-        </span>
+        {totalRevenue > 0 && (
+          <span className="flex w-fit items-center gap-1 rounded-md border-2 border-border bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground">
+            <TrendingUp className="size-3.5" /> +9,4% dari Mei 2026
+          </span>
+        )}
       </div>
 
       {/* Filters */}
@@ -115,7 +176,7 @@ export function AdminSubscriptions() {
 
       {/* Table */}
       <div className="mt-4 overflow-x-auto rounded-md border-2 border-admin-border bg-admin-surface">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead>
             <tr className="border-b-2 border-admin-border text-admin-foreground/60">
               <th className="px-4 py-3 font-medium">Waktu</th>
@@ -124,6 +185,7 @@ export function AdminSubscriptions() {
               <th className="px-4 py-3 font-medium">Jumlah</th>
               <th className="px-4 py-3 font-medium">Metode</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 text-right font-medium">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -146,6 +208,35 @@ export function AdminSubscriptions() {
                       <StatusIcon className="size-3" />
                       {s.label}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            title="Hapus transaksi ini"
+                            className="press-scale flex size-8 items-center justify-center rounded-md border-2 border-admin-border text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-2 border-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Hapus transaksi "{t.store}"?</AlertDialogTitle>
+                            <AlertDialogDescription>Baris ini akan hilang dari tampilan (data mock, sesi ini saja).</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeOne(t.id, t.store)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Ya, Hapus
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </td>
                 </tr>
               );

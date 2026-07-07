@@ -218,3 +218,41 @@ Tambahan dari luar scope Fase 4: prototipe HTML statis terpisah (dibuat di Claud
 5. Logout dari dropdown user (topbar) atau tombol Keluar (sidebar) → kembali ke Landing.
 6. `/admin`, `/admin/users`, `/admin/subscriptions` bisa diakses langsung tanpa login konsumen; search/filter/export CSV di halaman user & subscription jalan.
 7. Responsif 375px untuk semua layar baru (auth-shell, tier picker, stepper onboarding, admin table overflow-x).
+
+---
+
+# Fase 6 — Supabase Auth, Laporan 4-Periode, Stok, Admin Real Data
+
+## Auth: localStorage mock → Supabase asli
+- `context/auth-context.tsx`: ditulis ulang total, `register/login/logout/completeOnboarding` sekarang manggil `supabase.auth.*` + tabel `stores` (bukan `localStorage` lagi). Sesi dipulihkan lewat `supabase.auth.getSession()` + `onAuthStateChange`.
+- `lib/supabase.ts`: client baru, baca `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` dari env.
+- `login.tsx`, `register.tsx`, `onboarding.tsx`: `handleSubmit`/`finish` jadi `async`, ada penanganan error (pesan gagal ditampilkan di form, bukan cuma diam).
+- `sidebar.tsx`, `topbar.tsx`: `handleLogout` jadi `async`, `await logout()`.
+- Tabel Supabase: `stores`, `products`, `transactions` (SQL ada di riwayat chat — belum disimpan sebagai file `.sql` di repo ini).
+- Supabase project harus disetel: **Confirm email OFF** (Authentication → Providers → Email), kalau tidak alur Register→Onboarding langsung akan macet.
+
+## Laporan: 1 periode → 4 tab (Harian/Mingguan/Bulanan/Tahunan)
+- `data/mock-data.ts`: tambah `ReportSummary`, `ReportPeriod`, `PeriodReportData`, `DAILY_REPORT`, `WEEKLY_REPORT`, `MONTHLY_REPORT` (reuse `REPORT_SUMMARY`/`REVENUE_TREND_30D`/`REPORT_TOP_PRODUCTS` lama), `YEARLY_REPORT`, `REPORTS_BY_PERIOD`, `REPORT_PERIOD_LABEL`.
+- `pages/laporan.tsx`: ditulis ulang total pakai `Tabs` (shadcn) — 4 tab, tiap tab render KPI card + trend chart + top produk sendiri. Tombol **Hapus Semua (per-tab)** cuma reset tab itu; tombol **Hapus Semua Laporan (global, di header)** reset ke-4 tab sekaligus. Semua "hapus" ini cuma state React lokal (session), bukan hapus data Supabase — laporan memang belum ada tabel sumber datanya.
+
+## Stok: halaman baru + ProductsContext bersama
+- `context/products-context.tsx`: state produk + riwayat stok (`movements`) dipindah dari lokal-per-halaman jadi context bersama, supaya Produk ↔ Stok konsisten.
+- `pages/produk.tsx`: pakai `useProducts()` context (bukan `useState(PRODUCTS)` sendiri lagi), tombol **Hapus Semua** ditambah.
+- `components/shared/product-limit.tsx`: `useProductUsage` baca jumlah produk dari context (bukan `PRODUCTS.length` statis) — kuota di sidebar & halaman Produk sekarang ikut berubah kalau produk dihapus/ditambah.
+- `pages/stok.tsx`: halaman baru — tabel sesuaikan stok (+/- per produk dengan jumlah custom) + tabel riwayat perubahan stok. Route `/stok` (sebelumnya `ComingSoon`).
+- **Belum disentuh**: `pos.tsx` dan `dashboard.tsx` masih baca `PRODUCTS` statis langsung, belum ikut context ini — artinya transaksi di POS belum mengurangi stok asli. Follow-up kalau dibutuhkan.
+
+## Admin: passphrase gate + data asli Supabase
+- `components/layout/admin-gate.tsx`: gerbang passphrase client-side (`VITE_ADMIN_PASSPHRASE`), sessionStorage-based. **Bukan keamanan sungguhan** — cuma penghalang kasual karena `/admin/*` gak digerbang auth konsumen dan bisa diakses siapa saja di URL publik.
+- `App.tsx`: ketiga rute admin di tiap cabang (`guest`/`!onboarded`/`authed`) dibungkus `<AdminGate>`.
+- `pages/admin/users.tsx`: ditulis ulang total — fetch **asli** dari tabel `stores` Supabase (bukan `ADMIN_USERS` mock lagi), hapus per-baris + Hapus Semua beneran manggil `supabase.from("stores").delete()`.
+  - **Penting**: RLS default (`auth.uid() = id`) cuma izinin row sendiri. Supaya halaman ini bisa lihat/hapus SEMUA toko, perlu policy tambahan di Supabase (lihat riwayat chat untuk SQL-nya) yang membuka akses `authenticated` role ke semua row — ini HANYA aman selama belum ada user asli dari luar (masih tahap dev/testing sendiri). Sebelum publish untuk pengguna sungguhan, policy ini WAJIB dicabut dan diganti sistem role admin yang benar.
+  - Hapus di sini menghapus baris `stores` doang, BUKAN akun `auth.users`-nya — email tetap "terpakai" secara teknis di Supabase Auth.
+  - Supaya halaman ini menampilkan data (bukan kosong karena RLS), browser yang buka `/admin/users` harus dalam keadaan **login** sebagai salah satu akun (siapa saja), bukan sekadar lolos passphrase gate.
+- `pages/admin/subscriptions.tsx`: tetap mock (`ADMIN_TRANSACTIONS`, gak ada tabel pembayaran subscription asli), tapi sekarang jadi `useState` + hapus per-baris + Hapus Semua (reset ke array kosong, cuma sesi ini).
+
+## Belum diverifikasi (perlu dicek langsung)
+1. Tab Laporan: pindah antar tab, hapus per-tab, hapus semua — pastikan tab lain gak ikut kosong saat cuma 1 yang dihapus.
+2. Stok: tambah/kurangi stok dari halaman Stok → cek angka di Produk ikut berubah (dan sebaliknya), riwayat kecatat.
+3. Admin Users: login dulu di app (akun apa saja) di tab yang sama sebelum buka `/admin/users`, baru cek data toko beneran muncul; coba hapus 1 baris + Hapus Semua, cek beneran hilang dari Supabase Table Editor.
+4. Admin Gate: buka `/admin` di tab incognito (belum pernah masukin passphrase) → harus diminta kode dulu.

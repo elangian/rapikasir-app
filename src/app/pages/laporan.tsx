@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { Link } from "react-router";
 import {
   Lock,
@@ -9,6 +9,7 @@ import {
   TrendingUp,
   PiggyBank,
   CalendarDays,
+  Trash2,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -25,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -33,16 +35,48 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
 import { Badge } from "../components/ui/badge";
 import { cn } from "../components/ui/utils";
 import { TierBadge } from "../components/shared/tier-lock";
 import { useTier } from "../context/tier-context";
 import {
-  REPORT_SUMMARY,
-  REPORT_TOP_PRODUCTS,
-  REVENUE_TREND_30D,
+  REPORTS_BY_PERIOD,
+  REPORT_PERIOD_LABEL,
+  type ReportPeriod,
+  type PeriodReportData,
 } from "../data/mock-data";
 import { formatIDR, formatCompactIDR, formatPercent, formatNumber } from "../lib/format";
+import { toast } from "sonner";
+
+const PERIODS: ReportPeriod[] = ["harian", "mingguan", "bulanan", "tahunan"];
+
+const EMPTY_DATA: PeriodReportData = {
+  summary: {
+    periodLabel: "-",
+    totalRevenue: 0,
+    revenueTrendPct: 0,
+    totalTransactions: 0,
+    transactionsTrendPct: 0,
+    grossProfit: 0,
+    grossMarginPct: 0,
+    netProfit: 0,
+    netMarginPct: 0,
+  },
+  trendTitle: "Tren Pendapatan",
+  trend: [],
+  topProducts: [],
+};
 
 export function Laporan() {
   const { tier, canUse } = useTier();
@@ -51,36 +85,70 @@ export function Laporan() {
   const canNet = canUse("netProfit");
   const isBusiness = tier === "BUSINESS";
 
+  const [activePeriod, setActivePeriod] = useState<ReportPeriod>("bulanan");
+  const [cleared, setCleared] = useState<Record<ReportPeriod, boolean>>({
+    harian: false,
+    mingguan: false,
+    bulanan: false,
+    tahunan: false,
+  });
+
+  const clearOne = (period: ReportPeriod) => {
+    setCleared((prev) => ({ ...prev, [period]: true }));
+    toast.success(`Laporan ${REPORT_PERIOD_LABEL[period]} dihapus`, {
+      description: "Data ringkasan periode ini sudah dikosongkan.",
+    });
+  };
+
+  const clearAll = () => {
+    setCleared({ harian: true, mingguan: true, bulanan: true, tahunan: true });
+    toast.success("Semua laporan dihapus", { description: "Harian, Mingguan, Bulanan, dan Tahunan dikosongkan." });
+  };
+
+  const allCleared = PERIODS.every((p) => cleared[p]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
         <div>
           <h1 className="font-display">Laporan</h1>
-          <p className="text-muted-foreground">
-            Ringkasan performa usaha • Periode {REPORT_SUMMARY.periodLabel}
-          </p>
+          <p className="text-muted-foreground">Ringkasan performa usaha per periode.</p>
         </div>
 
         {!locked && (
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-1 items-center gap-2 rounded-md border-2 border-border bg-card px-2 py-1 sm:flex-none">
-              <CalendarDays className="size-4" />
-              <Select defaultValue="jun26">
-                <SelectTrigger className="h-8 w-full border-0 bg-transparent shadow-none focus-visible:ring-0 sm:w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-2 border-border">
-                  <SelectItem value="jun26">Juni 2026</SelectItem>
-                  <SelectItem value="mei26">Mei 2026</SelectItem>
-                  <SelectItem value="apr26">April 2026</SelectItem>
-                  {isBusiness && <SelectItem value="custom">Rentang Kustom…</SelectItem>}
-                </SelectContent>
-              </Select>
-            </div>
-
             <ExportButton icon={FileSpreadsheet} label="Excel" enabled={canExport} />
             <ExportButton icon={FileText} label="PDF" enabled={canExport} />
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  disabled={allCleared}
+                  className="press-scale flex items-center gap-2 rounded-md border-2 border-destructive/50 bg-card px-3 py-2 text-sm font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" /> Hapus Semua Laporan
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="border-2 border-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus semua laporan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Ini akan mengosongkan ringkasan Harian, Mingguan, Bulanan, dan Tahunan sekaligus. Tindakan ini
+                    tidak bisa dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={clearAll}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Ya, Hapus Semua
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>
@@ -88,7 +156,28 @@ export function Laporan() {
       {/* Report body (blurred + overlay when locked) */}
       <div className="relative">
         <div className={cn(locked && "pointer-events-none select-none blur-[6px]")} aria-hidden={locked}>
-          <ReportBody canNet={canNet} />
+          <Tabs value={activePeriod} onValueChange={(v) => setActivePeriod(v as ReportPeriod)}>
+            <TabsList className="border-2 border-border bg-card">
+              {PERIODS.map((p) => (
+                <TabsTrigger key={p} value={p}>
+                  {REPORT_PERIOD_LABEL[p]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {PERIODS.map((p) => (
+              <TabsContent key={p} value={p} className="mt-4">
+                <PeriodPanel
+                  period={p}
+                  data={cleared[p] ? EMPTY_DATA : REPORTS_BY_PERIOD[p]}
+                  canNet={canNet}
+                  isBusiness={isBusiness}
+                  onClear={() => clearOne(p)}
+                  cleared={cleared[p]}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
 
         {locked && <LockedOverlay />}
@@ -97,10 +186,76 @@ export function Laporan() {
   );
 }
 
-function ReportBody({ canNet }: { canNet: boolean }) {
-  const s = REPORT_SUMMARY;
+function PeriodPanel({
+  period,
+  data,
+  canNet,
+  isBusiness,
+  onClear,
+  cleared,
+}: {
+  period: ReportPeriod;
+  data: PeriodReportData;
+  canNet: boolean;
+  isBusiness: boolean;
+  onClear: () => void;
+  cleared: boolean;
+}) {
+  const s = data.summary;
   return (
     <div className="space-y-4">
+      {/* Period sub-header: label + (bulanan only) month picker + per-tab delete */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 rounded-md border-2 border-border bg-card px-3 py-1.5 text-sm">
+          <CalendarDays className="size-4 text-muted-foreground" />
+          <span className="font-medium">{s.periodLabel}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {period === "bulanan" && (
+            <Select defaultValue="jun26">
+              <SelectTrigger className="h-9 w-[150px] border-2 border-border bg-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-2 border-border">
+                <SelectItem value="jun26">Juni 2026</SelectItem>
+                <SelectItem value="mei26">Mei 2026</SelectItem>
+                <SelectItem value="apr26">April 2026</SelectItem>
+                {isBusiness && <SelectItem value="custom">Rentang Kustom…</SelectItem>}
+              </SelectContent>
+            </Select>
+          )}
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={cleared}
+                className="press-scale flex items-center gap-2 rounded-md border-2 border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="size-3.5" /> Hapus Semua ({REPORT_PERIOD_LABEL[period]})
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-2 border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Hapus laporan {REPORT_PERIOD_LABEL[period]}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cuma laporan {REPORT_PERIOD_LABEL[period]} yang dikosongkan — tab periode lain tidak terpengaruh.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onClear}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Ya, Hapus
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
@@ -108,26 +263,26 @@ function ReportBody({ canNet }: { canNet: boolean }) {
           tone="amber"
           label="Total Pendapatan"
           value={formatIDR(s.totalRevenue)}
-          trend={formatPercent(s.revenueTrendPct)}
+          trend={s.totalRevenue > 0 ? formatPercent(s.revenueTrendPct) : undefined}
         />
         <KpiCard
           icon={Receipt}
           label="Total Transaksi"
           value={formatNumber(s.totalTransactions)}
-          trend={formatPercent(s.transactionsTrendPct)}
+          trend={s.totalTransactions > 0 ? formatPercent(s.transactionsTrendPct) : undefined}
         />
         <KpiCard
           icon={TrendingUp}
           tone="green"
           label="Laba Kotor"
           value={formatIDR(s.grossProfit)}
-          sub={`Margin ${s.grossMarginPct.toLocaleString("id-ID")}%`}
+          sub={s.totalRevenue > 0 ? `Margin ${s.grossMarginPct.toLocaleString("id-ID")}%` : undefined}
         />
         <KpiCard
           icon={PiggyBank}
           label="Laba Bersih"
           value={canNet ? formatIDR(s.netProfit) : "•••••••"}
-          sub={canNet ? `Margin ${s.netMarginPct.toLocaleString("id-ID")}%` : undefined}
+          sub={canNet && s.totalRevenue > 0 ? `Margin ${s.netMarginPct.toLocaleString("id-ID")}%` : undefined}
           badge={!canNet ? "PRO" : undefined}
         />
       </div>
@@ -135,53 +290,60 @@ function ReportBody({ canNet }: { canNet: boolean }) {
       {/* Trend chart */}
       <div className="rounded-md border-2 border-border bg-card p-5 shadow-brutal-sm">
         <div className="mb-3 flex items-center justify-between">
-          <span className="font-display text-base font-semibold">Tren Pendapatan (30 Hari)</span>
-          <Badge className="border-2 border-border bg-block-green text-foreground">
-            <TrendingUp className="size-3" /> {formatPercent(REPORT_SUMMARY.revenueTrendPct)}
-          </Badge>
+          <span className="font-display text-base font-semibold">{data.trendTitle}</span>
+          {s.totalRevenue > 0 && (
+            <Badge className="border-2 border-border bg-block-green text-foreground">
+              <TrendingUp className="size-3" /> {formatPercent(s.revenueTrendPct)}
+            </Badge>
+          )}
         </div>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={REVENUE_TREND_30D} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-              <XAxis
-                key="x"
-                dataKey="day"
-                tickLine={false}
-                axisLine={{ stroke: "var(--border)" }}
-                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                interval={4}
-              />
-              <YAxis
-                key="y"
-                tickLine={false}
-                axisLine={false}
-                width={44}
-                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                tickFormatter={(v: number) => `${v}rb`}
-              />
-              <RechartsTooltip
-                contentStyle={{ border: "2px solid var(--border)", borderRadius: 6 }}
-                formatter={(v: number) => [formatIDR(v * 1000), "Pendapatan"]}
-                labelFormatter={(l) => `Hari ${l}`}
-              />
-              <Line
-                key="revenue-line"
-                type="monotone"
-                dataKey="revenue"
-                stroke="var(--accent)"
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 5, stroke: "var(--border)", strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {data.trend.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Belum ada data untuk periode ini.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.trend} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+                <XAxis
+                  key="x"
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={{ stroke: "var(--border)" }}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  interval={period === "harian" || period === "mingguan" ? 1 : period === "bulanan" ? 4 : 0}
+                />
+                <YAxis
+                  key="y"
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(v: number) => `${v}rb`}
+                />
+                <RechartsTooltip
+                  contentStyle={{ border: "2px solid var(--border)", borderRadius: 6 }}
+                  formatter={(v: number) => [formatIDR(v * 1000), "Pendapatan"]}
+                />
+                <Line
+                  key="revenue-line"
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--accent)"
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 5, stroke: "var(--border)", strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
       {/* Top products table */}
       <div className="overflow-x-auto rounded-md border-2 border-border bg-card">
         <div className="border-b-2 border-border px-5 py-4">
-          <span className="font-display text-base font-semibold">Produk Terlaris (Bulan Ini)</span>
+          <span className="font-display text-base font-semibold">Produk Terlaris ({REPORT_PERIOD_LABEL[period]})</span>
         </div>
         <Table>
           <TableHeader>
@@ -193,7 +355,7 @@ function ReportBody({ canNet }: { canNet: boolean }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {REPORT_TOP_PRODUCTS.map((p) => (
+            {data.topProducts.map((p) => (
               <TableRow key={p.name} className="border-border/60">
                 <TableCell className="font-medium">{p.name}</TableCell>
                 <TableCell className="text-right">{formatNumber(p.sold)}</TableCell>
@@ -203,6 +365,13 @@ function ReportBody({ canNet }: { canNet: boolean }) {
                 </TableCell>
               </TableRow>
             ))}
+            {data.topProducts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  Belum ada data produk terlaris untuk periode ini.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
@@ -220,8 +389,8 @@ function LockedOverlay() {
         <div className="space-y-1">
           <h2 className="font-display">Laporan tersedia di Paket Pro</h2>
           <p className="text-muted-foreground">
-            Buka laporan bulanan, laba kotor, laba bersih, dan export Excel/PDF untuk memantau
-            usahamu lebih dalam.
+            Buka laporan Harian, Mingguan, Bulanan, dan Tahunan lengkap dengan laba kotor, laba bersih, dan export
+            Excel/PDF untuk memantau usahamu lebih dalam.
           </p>
         </div>
         <Link

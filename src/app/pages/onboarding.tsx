@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Store,
   Check,
@@ -42,8 +42,11 @@ const STEPS = [
 
 export function Onboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, completeOnboarding } = useAuth();
   const { tier } = useTier();
+
+  const intendedTier = searchParams.get("intendedTier"); // "PRO" | "BUSINESS" | null
 
   const [step, setStep] = useState(1);
   const [storeName, setStoreName] = useState(user?.name || "");
@@ -93,7 +96,9 @@ export function Onboarding() {
         categoryLabel,
         productQty: qty || undefined,
       });
-      navigate("/");
+      navigate(
+        intendedTier === "PRO" || intendedTier === "BUSINESS" ? `/pembayaran?plan=${intendedTier}` : "/",
+      );
     } catch (err) {
       setFinishing(false);
       setErrorMsg(err instanceof Error ? err.message : "Gagal menyimpan profil toko. Coba lagi.");
@@ -283,11 +288,14 @@ export function Onboarding() {
                     <dd className="text-sm font-semibold">{qtyLabel}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
-                    <dt className="text-sm text-muted-foreground">Paket Aktif</dt>
-                    <dd>
+                    <dt className="text-sm text-muted-foreground">
+                      {intendedTier ? "Paket Dipilih" : "Paket Aktif"}
+                    </dt>
+                    <dd className="flex items-center gap-2">
                       <span className="rounded-md border-2 border-border bg-block-amber px-2 py-0.5 text-xs font-bold">
-                        {TIER_LABEL[tier]}
+                        {intendedTier ? TIER_LABEL[intendedTier as keyof typeof TIER_LABEL] : TIER_LABEL[tier]}
                       </span>
+                      {intendedTier && <span className="text-xs text-muted-foreground">Menunggu pembayaran</span>}
                     </dd>
                   </div>
                 </dl>
@@ -298,6 +306,7 @@ export function Onboarding() {
                     {errorMsg}
                   </div>
                 )}
+
                 <div className="mt-7 flex items-center justify-between gap-3">
                   <button
                     type="button"
@@ -314,7 +323,12 @@ export function Onboarding() {
                   >
                     {finishing ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" /> Menyiapkan Dashboard…
+                        <Loader2 className="size-4 animate-spin" />{" "}
+                        {intendedTier ? "Menyiapkan Pembayaran…" : "Menyiapkan Dashboard…"}
+                      </>
+                    ) : intendedTier ? (
+                      <>
+                        Lanjut ke Pembayaran <ArrowRight className="size-4" />
                       </>
                     ) : (
                       <>

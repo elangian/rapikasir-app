@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import {
   ArrowUpRight,
@@ -29,32 +30,35 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { formatIDR, formatPercent, formatNumber } from "../lib/format";
-import {
-  DASHBOARD_METRICS,
-  TOP_PRODUCTS,
-  RECENT_TRANSACTIONS,
-  LOW_STOCK,
-  REVENUE_SPARKLINE,
-  PRODUCTS,
-  type Transaction,
-} from "../data/mock-data";
+import { formatIDR, formatNumber } from "../lib/format";
+import { useProducts } from "../context/products-context";
 
-const METHOD_STYLE: Record<Transaction["method"], string> = {
-  Cash: "bg-block-green text-foreground border-border",
-  Transfer: "bg-block-amber text-foreground border-border",
-  QRIS: "bg-primary text-primary-foreground border-border",
-};
-
+/**
+ * Dashboard now reflects the logged-in store's real product/stock data
+ * (from ProductsContext). Revenue/transactions/top-products don't have a
+ * real backing source yet — POS checkout doesn't persist to Supabase's
+ * `transactions` table yet — so those sections show a genuine empty state
+ * instead of the old mock numbers, rather than pretending activity that
+ * never happened.
+ */
 export function Dashboard() {
-  const m = DASHBOARD_METRICS;
+  const { products } = useProducts();
+
+  const lowStock = useMemo(
+    () =>
+      products
+        .filter((p) => p.stock < 5)
+        .sort((a, b) => a.stock - b.stock)
+        .slice(0, 4),
+    [products],
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="font-display">Dashboard</h1>
-          <p className="text-muted-foreground">Performa toko kamu hari ini, Rabu 1 Juli 2026.</p>
+          <p className="text-muted-foreground">Performa toko kamu.</p>
         </div>
       </div>
 
@@ -64,29 +68,13 @@ export function Dashboard() {
         <BentoCard tone="card" raised className="sm:col-span-2">
           <div className="flex items-start justify-between">
             <span className="text-sm font-medium text-muted-foreground">Pendapatan Hari Ini</span>
-            <Badge className="border-2 border-border bg-block-green text-foreground">
-              <TrendingUp className="size-3" />
-              {formatPercent(m.revenueTrendPct)} vs kemarin
-            </Badge>
           </div>
           <p className="font-display mt-3 text-4xl font-extrabold tracking-tight text-primary md:text-5xl">
-            {formatIDR(m.revenueToday)}
+            {formatIDR(0)}
           </p>
-          <div className="mt-4 h-16">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_SPARKLINE} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                <Area
-                  key="rev-area"
-                  type="monotone"
-                  dataKey="v"
-                  stroke="var(--accent)"
-                  strokeWidth={2.5}
-                  fill="var(--accent)"
-                  fillOpacity={0.18}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Belum ada transaksi tercatat — mulai catat penjualan lewat halaman Transaksi.
+          </p>
         </BentoCard>
 
         {/* Transactions count [1x1] */}
@@ -95,11 +83,7 @@ export function Dashboard() {
             <Receipt className="size-4" />
           </span>
           <p className="mt-3 text-sm font-medium text-muted-foreground">Transaksi Hari Ini</p>
-          <p className="font-display text-3xl font-extrabold">{m.transactionsToday}</p>
-          <p className="mt-auto flex items-center gap-1 text-xs font-semibold text-success">
-            <ArrowUpRight className="size-3" />
-            {formatPercent(m.transactionsTrendPct)}
-          </p>
+          <p className="font-display text-3xl font-extrabold">0</p>
         </BentoCard>
 
         {/* Active products [1x1] */}
@@ -108,7 +92,7 @@ export function Dashboard() {
             <Package className="size-4" />
           </span>
           <p className="mt-3 text-sm font-medium text-muted-foreground">Produk Aktif</p>
-          <p className="font-display text-3xl font-extrabold">{formatNumber(PRODUCTS.length)}</p>
+          <p className="font-display text-3xl font-extrabold">{formatNumber(products.length)}</p>
           <ProductLimit showUpgrade className="mt-auto pt-3" />
         </BentoCard>
 
@@ -116,60 +100,40 @@ export function Dashboard() {
         <BentoCard className="sm:col-span-2">
           <div className="flex items-center justify-between">
             <span className="font-display text-base font-semibold">Produk Terlaris</span>
-            <span className="text-xs text-muted-foreground">Top 5 hari ini</span>
+            <span className="text-xs text-muted-foreground">Top 5</span>
           </div>
-          <div className="mt-3 h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={TOP_PRODUCTS}
-                layout="vertical"
-                margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
-                barCategoryGap={8}
-              >
-                <XAxis key="x" type="number" hide />
-                <YAxis
-                  key="y"
-                  type="category"
-                  dataKey="name"
-                  width={130}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "var(--foreground)" }}
-                />
-                <RechartsTooltip
-                  cursor={{ fill: "var(--block-amber)" }}
-                  contentStyle={{ border: "2px solid var(--border)", borderRadius: 6 }}
-                  formatter={(v: number) => [`${v} terjual`, ""]}
-                />
-                <Bar key="sold-bar" dataKey="sold" radius={[0, 4, 4, 0]} stroke="var(--border)" strokeWidth={2}>
-                  {TOP_PRODUCTS.map((p, i) => (
-                    <Cell key={`cell-${p.name}`} fill={i === 0 ? "var(--accent)" : "var(--secondary)"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="mt-3 flex h-44 items-center justify-center text-center text-sm text-muted-foreground">
+            Belum ada data penjualan.
           </div>
         </BentoCard>
 
-        {/* Low stock [1x1] */}
-        <BentoCard tone="card" className="border-destructive">
+        {/* Low stock [1x1] — real data from products context */}
+        <BentoCard tone="card" className={lowStock.length > 0 ? "border-destructive" : undefined}>
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+            <span
+              className={`flex items-center gap-1.5 text-sm font-semibold ${lowStock.length > 0 ? "text-destructive" : ""}`}
+            >
               <AlertTriangle className="size-4" />
               Stok Menipis
             </span>
-            <span className="animate-rk-pulse flex size-6 items-center justify-center rounded-md border-2 border-border bg-destructive text-xs font-bold text-destructive-foreground">
-              {LOW_STOCK.length}
-            </span>
+            {lowStock.length > 0 && (
+              <span className="animate-rk-pulse flex size-6 items-center justify-center rounded-md border-2 border-border bg-destructive text-xs font-bold text-destructive-foreground">
+                {lowStock.length}
+              </span>
+            )}
           </div>
-          <ul className="mt-3 space-y-2">
-            {LOW_STOCK.slice(0, 4).map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                <span className="truncate">{p.name}</span>
-                <span className="font-bold text-destructive">{p.stock}</span>
-              </li>
-            ))}
-          </ul>
+          {lowStock.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {lowStock.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate">{p.name}</span>
+                  <span className="font-bold text-destructive">{p.stock}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">Semua produk stoknya aman.</p>
+          )}
         </BentoCard>
 
         {/* Quick action: new transaction [1x1] */}
@@ -214,36 +178,8 @@ export function Dashboard() {
               Lihat semua
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead>Waktu</TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Metode</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {RECENT_TRANSACTIONS.map((t) => (
-                  <TableRow key={t.id} className="border-border/60">
-                    <TableCell className="font-medium">{t.time}</TableCell>
-                    <TableCell className="text-muted-foreground">{t.id}</TableCell>
-                    <TableCell>
-                      <span className="font-medium">{t.item}</span>
-                      {t.itemsCount > 1 && (
-                        <span className="text-muted-foreground"> +{t.itemsCount - 1} item</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">{formatIDR(t.total)}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className={`border-2 ${METHOD_STYLE[t.method]}`}>{t.method}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+            Belum ada transaksi. Catat transaksi pertamamu di halaman Transaksi.
           </div>
         </BentoCard>
       </div>

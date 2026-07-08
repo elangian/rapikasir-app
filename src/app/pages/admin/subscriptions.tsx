@@ -14,6 +14,7 @@ import {
 } from "../../components/ui/alert-dialog";
 import { ADMIN_TRANSACTIONS } from "../../data/mock-data";
 import { formatIDR } from "../../lib/format";
+import { useSessionState } from "../../lib/use-session-state";
 import type { Tier } from "../../context/tier-context";
 import { toast } from "sonner";
 
@@ -29,7 +30,9 @@ const STATUS_META = {
 } as const;
 
 export function AdminSubscriptions() {
-  const [transactions, setTransactions] = useState(() => ADMIN_TRANSACTIONS.map((t, i) => ({ ...t, id: i })));
+  const [transactions, setTransactions] = useSessionState("rapikasir.admin-subscriptions.transactions", () =>
+    ADMIN_TRANSACTIONS.map((t, i) => ({ ...t, id: i })),
+  );
   const [methodFilter, setMethodFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState<Tier | "all">("all");
   const [statusFilter, setStatusFilter] = useState<keyof typeof STATUS_META | "all">("all");

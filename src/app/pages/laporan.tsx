@@ -50,13 +50,14 @@ import { Badge } from "../components/ui/badge";
 import { cn } from "../components/ui/utils";
 import { TierBadge } from "../components/shared/tier-lock";
 import { useTier } from "../context/tier-context";
+import { useTransactions } from "../context/transactions-context";
 import {
-  REPORTS_BY_PERIOD,
   REPORT_PERIOD_LABEL,
   type ReportPeriod,
   type PeriodReportData,
 } from "../data/mock-data";
 import { formatIDR, formatCompactIDR, formatPercent, formatNumber } from "../lib/format";
+import { useSessionState } from "../lib/use-session-state";
 import { toast } from "sonner";
 
 const PERIODS: ReportPeriod[] = ["harian", "mingguan", "bulanan", "tahunan"];
@@ -80,13 +81,14 @@ const EMPTY_DATA: PeriodReportData = {
 
 export function Laporan() {
   const { tier, canUse } = useTier();
+  const { reportsByPeriod } = useTransactions();
   const locked = !canUse("reports"); // FREE tier
   const canExport = canUse("export");
   const canNet = canUse("netProfit");
   const isBusiness = tier === "BUSINESS";
 
   const [activePeriod, setActivePeriod] = useState<ReportPeriod>("bulanan");
-  const [cleared, setCleared] = useState<Record<ReportPeriod, boolean>>({
+  const [cleared, setCleared] = useSessionState<Record<ReportPeriod, boolean>>("rapikasir.laporan.cleared", {
     harian: false,
     mingguan: false,
     bulanan: false,
@@ -169,7 +171,7 @@ export function Laporan() {
               <TabsContent key={p} value={p} className="mt-4">
                 <PeriodPanel
                   period={p}
-                  data={cleared[p] ? EMPTY_DATA : REPORTS_BY_PERIOD[p]}
+                  data={cleared[p] ? EMPTY_DATA : reportsByPeriod[p]}
                   canNet={canNet}
                   isBusiness={isBusiness}
                   onClear={() => clearOne(p)}

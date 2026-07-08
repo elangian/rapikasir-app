@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { TrendingUp, UserPlus, Receipt, Calendar, Trash2 } from "lucide-react";
 import { AdminLayout } from "../../components/layout/admin-layout";
 import {
@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog";
 import { formatIDR } from "../../lib/format";
+import { useSessionState } from "../../lib/use-session-state";
 import { toast } from "sonner";
 
 const MOCK_STATS = {
@@ -42,7 +43,7 @@ const EMPTY_STATS = {
 };
 
 export function AdminDashboard() {
-  const [cleared, setCleared] = useState(false);
+  const [cleared, setCleared] = useSessionState("rapikasir.admin-dashboard.cleared", false);
   const stats = cleared ? EMPTY_STATS : MOCK_STATS;
   const { linePath, areaPath } = useMemo(() => buildGrowthPath(cleared), [cleared]);
 

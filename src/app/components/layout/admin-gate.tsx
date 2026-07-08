@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Store, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { Lock, ArrowRight, AlertCircle } from "lucide-react";
 
 const SESSION_KEY = "rapikasir.admin.unlocked";
 
@@ -42,9 +42,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen items-center justify-center bg-admin-bg px-5 font-sans text-admin-foreground antialiased">
       <div className="w-full max-w-sm rounded-lg border-2 border-admin-border bg-admin-surface p-8 shadow-brutal">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-            <Store className="size-5" />
-          </span>
+          <img src="/logo-icon.png" alt="RapiKasir" className="size-9" />
           <span className="font-display text-xl font-bold tracking-tight">RapiKasir Internal</span>
         </div>
 

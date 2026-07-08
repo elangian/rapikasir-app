@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
 import { TierProvider } from "./context/tier-context";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { ProductsProvider } from "./context/products-context";
+import { TransactionsProvider } from "./context/transactions-context";
 import { Sidebar, SidebarContent } from "./components/layout/sidebar";
 import { Topbar } from "./components/layout/topbar";
 import { ComingSoon } from "./components/shared/coming-soon";
@@ -31,27 +32,29 @@ function AppLayout() {
 
   return (
     <ProductsProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground">
-        {/* Desktop rail */}
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <TransactionsProvider>
+        <div className="flex min-h-screen w-full bg-background text-foreground">
+          {/* Desktop rail */}
+          <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
 
-        {/* Mobile off-canvas drawer */}
-        <MobileDrawer
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          side="left"
-          title="Menu navigasi"
-        >
-          <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
-        </MobileDrawer>
+          {/* Mobile off-canvas drawer */}
+          <MobileDrawer
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            side="left"
+            title="Menu navigasi"
+          >
+            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+          </MobileDrawer>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar onMenuClick={() => setMobileOpen(true)} />
-          <main className="flex-1 p-4 md:p-6">
-            <Outlet />
-          </main>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Topbar onMenuClick={() => setMobileOpen(true)} />
+            <main className="flex-1 p-4 md:p-6">
+              <Outlet />
+            </main>
+          </div>
         </div>
-      </div>
+      </TransactionsProvider>
     </ProductsProvider>
   );
 }

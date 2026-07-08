@@ -34,7 +34,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "../components/ui/dialog";
 import { cn } from "../components/ui/utils";
 import { ProductLimit, useProductUsage } from "../components/shared/product-limit";
@@ -60,14 +59,15 @@ const STATUS_STYLE: Record<Status, string> = {
 const ADD_CATEGORIES = CATEGORIES.filter((c) => c !== "Semua");
 
 export function Produk() {
-  const { products: items, addProduct, removeProduct: removeProductById, removeAllProducts } = useProducts();
+  const { products: items, addProduct, updateProduct, removeProduct: removeProductById, removeAllProducts } = useProducts();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Semua");
   const { limit, unlimited } = useProductUsage();
 
   const atLimit = !unlimited && items.length >= limit;
 
-  const [addOpen, setAddOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", category: ADD_CATEGORIES[0], price: "", cost: "", stock: "" });
 
@@ -80,6 +80,24 @@ export function Produk() {
       ),
     [items, query, category],
   );
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm({ name: "", category: ADD_CATEGORIES[0], price: "", cost: "", stock: "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (p: (typeof items)[number]) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name,
+      category: p.category,
+      price: String(p.price),
+      cost: String(p.cost),
+      stock: String(p.stock),
+    });
+    setDialogOpen(true);
+  };
 
   const removeProduct = async (p: { id: string; name: string }) => {
     try {
@@ -99,22 +117,29 @@ export function Produk() {
     }
   };
 
-  const submitAdd = async (e: FormEvent) => {
+  const submitForm = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      category: form.category,
+      price: Number(form.price) || 0,
+      cost: Number(form.cost) || 0,
+      stock: Number(form.stock) || 0,
+    };
     try {
-      await addProduct({
-        name: form.name.trim(),
-        category: form.category,
-        price: Number(form.price) || 0,
-        cost: Number(form.cost) || 0,
-        stock: Number(form.stock) || 0,
-      });
-      toast.success("Produk ditambahkan", { description: form.name.trim() });
-      setForm({ name: "", category: ADD_CATEGORIES[0], price: "", cost: "", stock: "" });
-      setAddOpen(false);
+      if (editingId) {
+        await updateProduct(editingId, payload);
+        toast.success("Produk diperbarui", { description: payload.name });
+      } else {
+        await addProduct(payload);
+        toast.success("Produk ditambahkan", { description: payload.name });
+      }
+      setDialogOpen(false);
     } catch (err) {
-      toast.error("Gagal menambah produk", { description: err instanceof Error ? err.message : "Coba lagi." });
+      toast.error(editingId ? "Gagal memperbarui produk" : "Gagal menambah produk", {
+        description: err instanceof Error ? err.message : "Coba lagi.",
+      });
     } finally {
       setSaving(false);
     }
@@ -129,22 +154,22 @@ export function Produk() {
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-block w-full sm:w-auto">
-                    <DialogTrigger asChild>
-                      <button
-                        disabled={atLimit}
-                        className={cn(
-                          "press-scale flex w-full items-center justify-center gap-2 rounded-md border-2 border-border bg-accent px-4 py-2 font-semibold text-accent-foreground shadow-brutal-sm sm:w-auto",
-                          atLimit && "cursor-not-allowed opacity-50 shadow-none",
-                        )}
-                      >
-                        <Plus className="size-4" /> Tambah Produk
-                      </button>
-                    </DialogTrigger>
+                    <button
+                      type="button"
+                      onClick={openAdd}
+                      disabled={atLimit}
+                      className={cn(
+                        "press-scale flex w-full items-center justify-center gap-2 rounded-md border-2 border-border bg-accent px-4 py-2 font-semibold text-accent-foreground shadow-brutal-sm sm:w-auto",
+                        atLimit && "cursor-not-allowed opacity-50 shadow-none",
+                      )}
+                    >
+                      <Plus className="size-4" /> Tambah Produk
+                    </button>
                   </span>
                 </TooltipTrigger>
                 {atLimit && (
@@ -157,10 +182,12 @@ export function Produk() {
 
             <DialogContent className="border-2 border-border">
               <DialogHeader>
-                <DialogTitle>Tambah Produk</DialogTitle>
-                <DialogDescription>Isi detail produk baru untuk katalog tokomu.</DialogDescription>
+                <DialogTitle>{editingId ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? "Perbarui detail produk ini." : "Isi detail produk baru untuk katalog tokomu."}
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={submitAdd} className="space-y-4">
+              <form onSubmit={submitForm} className="space-y-4">
                 <div>
                   <label htmlFor="p-name" className="mb-1.5 block text-sm font-medium">Nama Produk</label>
                   <input
@@ -231,7 +258,7 @@ export function Produk() {
                     className="press-scale flex w-full items-center justify-center gap-2 rounded-md border-2 border-border bg-accent py-2.5 text-sm font-semibold text-accent-foreground shadow-brutal-sm disabled:opacity-70"
                   >
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                    {saving ? "Menyimpan…" : "Simpan Produk"}
+                    {saving ? "Menyimpan…" : editingId ? "Perbarui Produk" : "Simpan Produk"}
                   </button>
                 </DialogFooter>
               </form>
@@ -342,7 +369,7 @@ export function Produk() {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <button
-                        onClick={() => toast.info("Edit produk", { description: "Segera hadir — untuk sekarang, hapus lalu tambah ulang." })}
+                        onClick={() => openEdit(p)}
                         className="press-scale flex size-8 items-center justify-center rounded-md border-2 border-border bg-card hover:bg-block-amber"
                       >
                         <Pencil className="size-3.5" />

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, Link } from "react-router";
-import { LayoutDashboard, Users, CreditCard, Store, Menu, X, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, Menu, X, LogOut } from "lucide-react";
 import { cn } from "../ui/utils";
 import { MobileDrawer } from "../shared/mobile-drawer";
 
@@ -39,9 +39,7 @@ function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function AdminBrand() {
   return (
     <div className="flex h-16 items-center gap-2 border-b-2 border-admin-border px-4">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-        <Store className="size-4" />
-      </span>
+      <img src="/logo-icon.png" alt="RapiKasir" className="size-8 shrink-0" />
       <span className="font-display text-base font-bold tracking-tight">RapiKasir</span>
       <span className="ml-auto rounded-md border border-admin-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-admin-foreground/60">
         Internal
@@ -99,9 +97,7 @@ export function AdminLayout({
         <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} side="left" title="Menu navigasi admin">
           <div className="flex h-full flex-col bg-admin-bg text-admin-foreground">
             <div className="flex h-16 items-center gap-2 border-b-2 border-admin-border px-4">
-              <span className="flex size-8 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-                <Store className="size-4" />
-              </span>
+              <img src="/logo-icon.png" alt="RapiKasir" className="size-8" />
               <span className="font-display text-base font-bold">RapiKasir</span>
               <button onClick={() => setMobileOpen(false)} className="ml-auto text-admin-foreground/70" aria-label="Tutup menu">
                 <X className="size-5" />

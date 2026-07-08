@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Store, type LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
 interface BrandPoint {
   icon: LucideIcon;
@@ -30,9 +30,7 @@ export function AuthShell({
         </div>
 
         <Link to="/" className="relative flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-            <Store className="size-5" />
-          </span>
+          <img src="/logo-icon.png" alt="RapiKasir" className="size-9" />
           <span className="font-display text-xl font-bold tracking-tight text-primary-foreground">RapiKasir</span>
         </Link>
 
@@ -56,9 +54,7 @@ export function AuthShell({
       <main className="flex items-center justify-center px-5 py-12 sm:px-10">
         <div className="w-full max-w-sm">
           <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex size-9 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-              <Store className="size-5" />
-            </span>
+            <img src="/logo-icon.png" alt="RapiKasir" className="size-9" />
             <span className="font-display text-xl font-bold tracking-tight">RapiKasir</span>
           </Link>
           {children}

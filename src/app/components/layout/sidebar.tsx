@@ -9,7 +9,6 @@ import {
   Settings,
   Sparkles,
   ChevronLeft,
-  Store,
   LogOut,
 } from "lucide-react";
 import { cn } from "../ui/utils";
@@ -62,9 +61,7 @@ export function SidebarContent({
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Brand */}
       <div className="flex h-16 items-center gap-2 border-b-2 border-sidebar-border px-4">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-          <Store className="size-4" />
-        </span>
+        <img src="/logo-icon.png" alt="RapiKasir" className="size-8 shrink-0" />
         {!collapsed && (
           <span className="font-display text-lg font-bold tracking-tight">RapiKasir</span>
         )}

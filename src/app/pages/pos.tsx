@@ -18,6 +18,7 @@ import { cn } from "../components/ui/utils";
 import { TierLock, TierBadge } from "../components/shared/tier-lock";
 import { useTier } from "../context/tier-context";
 import { useProducts } from "../context/products-context";
+import { useTransactions } from "../context/transactions-context";
 import { CATEGORIES, type Product } from "../data/mock-data";
 import { formatIDR } from "../lib/format";
 import { toast } from "sonner";
@@ -32,12 +33,14 @@ type PayMethod = "Cash" | "Transfer" | "QRIS";
 export function POS() {
   const { tier, canUse } = useTier();
   const { products } = useProducts();
+  const { recordTransaction } = useTransactions();
   const [category, setCategory] = useState("Semua");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [discount, setDiscount] = useState(0);
   const [method, setMethod] = useState<PayMethod>("Cash");
   const [cartOpen, setCartOpen] = useState(false); // mobile bottom sheet
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const canDiscount = canUse("discount");
   const canQris = canUse("qris");
@@ -82,14 +85,38 @@ export function POS() {
   const total = subtotal - discountAmount;
   const itemCount = cart.reduce((s, l) => s + l.qty, 0);
 
-  const checkout = () => {
-    if (cart.length === 0) return;
-    toast.success("Transaksi berhasil diproses!", {
-      description: `${cart.length} item • ${formatIDR(total)} • ${method}`,
-    });
-    setCart([]);
-    setDiscount(0);
-    setCartOpen(false);
+  const checkout = async () => {
+    if (cart.length === 0 || checkingOut) return;
+    setCheckingOut(true);
+    try {
+      const itemLabel =
+        cart.length === 1 ? cart[0].product.name : `${cart[0].product.name} +${cart.length - 1} lainnya`;
+      await recordTransaction({
+        item: itemLabel,
+        itemsCount: itemCount,
+        total,
+        method,
+        items: cart.map((l) => ({
+          productId: l.product.id,
+          name: l.product.name,
+          qty: l.qty,
+          price: l.product.price,
+          cost: l.product.cost,
+        })),
+      });
+      toast.success("Transaksi berhasil diproses!", {
+        description: `${cart.length} item • ${formatIDR(total)} • ${method}`,
+      });
+      setCart([]);
+      setDiscount(0);
+      setCartOpen(false);
+    } catch (err) {
+      toast.error("Transaksi gagal disimpan", {
+        description: err instanceof Error ? err.message : "Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setCheckingOut(false);
+    }
   };
 
   // Cart card — reused in the desktop column and the mobile bottom sheet.
@@ -213,10 +240,10 @@ export function POS() {
 
         <button
           onClick={checkout}
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || checkingOut}
           className="press-scale flex w-full items-center justify-center gap-2 rounded-md border-2 border-border bg-accent py-3 font-semibold text-accent-foreground shadow-brutal-sm disabled:opacity-50 disabled:shadow-none"
         >
-          Proses Transaksi
+          {checkingOut ? "Memproses…" : "Proses Transaksi"}
         </button>
       </div>
     </div>

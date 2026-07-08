@@ -27,6 +27,7 @@ interface ProductsContextValue {
   loading: boolean;
   movements: StockMovement[];
   addProduct: (input: NewProductInput) => Promise<void>;
+  updateProduct: (id: string, input: NewProductInput) => Promise<void>;
   adjustStock: (productId: string, delta: number, reason: string) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   removeAllProducts: () => Promise<void>;
@@ -95,6 +96,19 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     setProducts((prev) => [...prev, data as Product].sort((a, b) => a.name.localeCompare(b.name)));
   };
 
+  const updateProduct: ProductsContextValue["updateProduct"] = async (id, input) => {
+    const { data, error } = await supabase
+      .from("products")
+      .update(input)
+      .eq("id", id)
+      .select("id, name, category, price, cost, stock")
+      .single();
+    if (error) throw error;
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? (data as Product) : p)).sort((a, b) => a.name.localeCompare(b.name)),
+    );
+  };
+
   const adjustStock: ProductsContextValue["adjustStock"] = async (productId, delta, reason) => {
     const current = products.find((p) => p.id === productId);
     if (!current) return;
@@ -134,7 +148,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProductsContext.Provider
-      value={{ products, loading, movements, addProduct, adjustStock, removeProduct, removeAllProducts }}
+      value={{ products, loading, movements, addProduct, updateProduct, adjustStock, removeProduct, removeAllProducts }}
     >
       {children}
     </ProductsContext.Provider>

@@ -45,9 +45,7 @@ export function Register() {
     <div className="min-h-screen bg-background font-sans antialiased">
       <header className="mx-auto flex h-20 w-full max-w-7xl items-center px-5 md:px-8">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-            <Store className="size-5" />
-          </span>
+          <img src="/logo-icon.png" alt="RapiKasir" className="size-9" />
           <span className="font-display text-xl font-bold tracking-tight">RapiKasir</span>
         </Link>
       </header>

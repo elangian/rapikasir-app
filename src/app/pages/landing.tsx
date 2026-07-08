@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import {
-  Store,
   ArrowRight,
   TrendingUp,
   ShoppingCart,
@@ -23,9 +22,7 @@ export function Landing() {
       <header className="sticky top-0 z-30 border-b-2 border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center px-5 md:px-8">
           <a href="#top" className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-              <Store className="size-5" />
-            </span>
+            <img src="/logo-icon.png" alt="RapiKasir" className="size-9" />
             <span className="font-display text-xl font-bold tracking-tight">RapiKasir</span>
           </a>
 
@@ -90,9 +87,7 @@ export function Landing() {
               </div>
               <div className="flex">
                 <div className="hidden w-14 shrink-0 flex-col items-center gap-5 bg-primary py-4 sm:flex">
-                  <span className="flex size-8 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-                    <Store className="size-4" />
-                  </span>
+                  <img src="/logo-icon.png" alt="RapiKasir" className="size-8" />
                   <LayoutDashboard className="size-4 text-primary-foreground" />
                   <ShoppingCart className="size-4 text-primary-foreground/45" />
                   <Package className="size-4 text-primary-foreground/45" />
@@ -359,9 +354,7 @@ export function Landing() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-10 md:px-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="flex size-8 items-center justify-center rounded-md border-2 border-border bg-accent text-accent-foreground">
-                <Store className="size-4" />
-              </span>
+              <img src="/logo-icon.png" alt="RapiKasir" className="size-8" />
               <span className="font-display text-lg font-bold tracking-tight">RapiKasir</span>
             </div>
             <p className="mt-2 max-w-xs text-sm text-muted-foreground">Aplikasi kasir dan manajemen usaha untuk UMKM Indonesia.</p>

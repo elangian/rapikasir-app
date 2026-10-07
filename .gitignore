@@ -20,7 +20,3 @@ Thumbs.db
 # Logs
 npm-debug.log*
 pnpm-debug.log*
-
-# File marker Windows/WSL
-*Zone.Identifier
-rapikasir-src-update-*.zip

@@ -17,3 +17,11 @@ jobs:
           test "$code" = "200"
           grep -q 'id="root"' page.html
           grep -q 'RapiKasir' page.html
+      - name: Supabase terjangkau
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+        run: |
+          test -n "$SUPABASE_URL"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health")
+          echo "Supabase HTTP status: $code"
+          case "$code" in 200|401) exit 0 ;; *) exit 1 ;; esac

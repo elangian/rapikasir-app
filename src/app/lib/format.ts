@@ -1,6 +1,6 @@
 /** Format a number as Indonesian Rupiah, e.g. 25000 -> "Rp 25.000". */
 export function formatIDR(value: number): string {
-  return "Rp" + Math.round(value).toLocaleString("id-ID");
+  return "Rp " + Math.round(value).toLocaleString("id-ID");
 }
 
 /** Format a number compactly, e.g. 1200000 -> "1,2 jt". */

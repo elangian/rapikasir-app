@@ -1,0 +1,19 @@
+name: Smoke test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Situs production menjawab
+        run: |
+          URL="https://rapikasir-app.vercel.app"
+          code=$(curl -s -o page.html -w "%{http_code}" "$URL")
+          echo "HTTP status: $code"
+          test "$code" = "200"
+          grep -q 'id="root"' page.html
+          grep -q 'RapiKasir' page.html

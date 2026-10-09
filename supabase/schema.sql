@@ -1,5 +1,6 @@
 -- RapiKasir — skema dasar (Fase 6 tutorial Supabase)
--- Jalankan di Supabase Dashboard -> SQL Editor -> New query
+-- Bootstrap only: apply migration 2 and migration 3 before exposing the API.
+-- Existing databases must use migrations, not rerun this schema.
 
 create table stores (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -38,6 +39,9 @@ alter table products enable row level security;
 alter table transactions enable row level security;
 
 -- Default: tiap toko cuma bisa baca/tulis datanya sendiri.
-create policy "own store" on stores for all using (auth.uid() = id);
-create policy "own products" on products for all using (auth.uid() = store_id);
-create policy "own transactions" on transactions for all using (auth.uid() = store_id);
+create policy "own store" on stores for all to authenticated
+  using (auth.uid() = id) with check (auth.uid() = id);
+create policy "own products" on products for all to authenticated
+  using (auth.uid() = store_id) with check (auth.uid() = store_id);
+create policy "own transactions" on transactions for all to authenticated
+  using (auth.uid() = store_id) with check (auth.uid() = store_id);

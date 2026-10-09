@@ -10,30 +10,21 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useTier, type Tier, TIER_LABEL } from "../context/tier-context";
-import { useAuth } from "../context/auth-context";
 import { PLANS, FEATURE_MATRIX, type Plan } from "../data/mock-data";
 import { toast } from "sonner";
 
 export function Pricing() {
   const { tier } = useTier();
-  const { updateTier } = useAuth();
   const navigate = useNavigate();
 
-  const choose = async (plan: Plan) => {
+  const choose = (plan: Plan) => {
     if (plan.price > 0) {
       navigate(`/pembayaran?plan=${plan.tier}`);
       return;
     }
-    try {
-      await updateTier(plan.tier);
-      toast.success(`Paket ${plan.name} aktif`, {
-        description: "Perubahan tersimpan ke akunmu.",
-      });
-    } catch (err) {
-      toast.error("Gagal mengganti paket", {
-        description: err instanceof Error ? err.message : "Coba lagi.",
-      });
-    }
+    toast.info("Perubahan paket belum tersedia", {
+      description: "Hubungi pengelola RapiKasir untuk aktivasi atau perubahan paket.",
+    });
   };
 
   return (

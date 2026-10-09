@@ -40,10 +40,5 @@ jobs:
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
         with:
           deno-version: "2.9.6"
-      - run: deno check --config supabase/functions/admin/deno.json supabase/functions/admin/index.ts
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: edge-dependency-lock
-          path: supabase/functions/admin/deno.lock
-          if-no-files-found: error
-          retention-days: 1
+      - run: deno check --frozen --config supabase/functions/admin/deno.json supabase/functions/admin/index.ts
+      - run: deno audit --level high --lock supabase/functions/admin/deno.lock

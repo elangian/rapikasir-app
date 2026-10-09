@@ -22,7 +22,9 @@ environment change, user-data mutation, or production deployment is authorized.
   Existing subscriptions remain intact. Payment routes explain that online
   activation is unavailable and tell users not to send payment.
 - CI installs from the lockfile, runs local tests, strict TypeScript, dependency audit, and build
-  on Node 24, matching Vercel. Tests do not load deployment env files.
+  on Node 24, matching Vercel. Tests do not load deployment env files. A separate
+  Deno 2.9.6 job checks the Edge Function using its frozen lockfile and audits
+  backend dependencies; neither CI job deploys it.
 - Smoke uses GET only, bounded three-attempt retries, ten-second request timeouts,
   HTML/asset/SPA route validation, and an Auth health JSON check. HTTP 401 fails
   immediately. Redirects fail instead of forwarding keys to another origin.
@@ -151,6 +153,14 @@ server-validated plan/amount/currency/tenant; no payment webhook is implemented.
   restore is a last-resort operator action under a separate approved recovery plan.
 
 ## References
+
+Local validation: Node 24.21.0 npm ci passed; 51 tests across 7 files passed;
+strict TypeScript and Vite build passed. Deno 2.9.6 frozen entrypoint check
+passed. Both npm and Deno dependency audits reported no known vulnerabilities.
+GET production/Preview HTML, routes and assets passed. Live Supabase Auth health
+needs the GitHub variable/secret configuration above; current results and final
+commit/deployment checks are recorded on the PR. These are local/HTTP checks,
+not proof that live database policies are already secured.
 
 - [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase column privileges](https://supabase.com/docs/guides/database/postgres/column-level-security)

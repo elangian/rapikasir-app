@@ -10,7 +10,7 @@ environment change, user-data mutation, or production deployment is authorized.
   stores, products, and transactions. Broad permissive policies cannot override
   these guards. Anonymous table privileges are revoked.
 - Store inserts must start on FREE. Store updates are limited to profile and
-  onboarding columns; tier, identity, and creation timestamp are not writable.
+  onboarding columns; tier, identity, and creation timestamp are not writable by consumers.
   Consumer store deletion is disabled, preventing cascade deletion and
   delete/reinsert subscription resets. Product and transaction owner CRUD remains.
 - Admin routes always show a closed-access page. Historical session-storage
@@ -75,18 +75,42 @@ policy and does not replace migration 3.
 - Enable branch protection/rulesets for main requiring CI and review. It is
   currently unprotected; this patch does not change repository settings.
 
-## Architecture proposal — awaiting approval, not implemented
+## Approved backend design — code prepared, not deployed
 
-Use a Supabase Edge Function that verifies the caller JWT against Auth, obtains
-the caller identity from verification, and checks an admin membership table in
-a non-exposed schema. Only a trusted server/operator may edit membership. Never
-trust request-supplied identity, user-editable user_metadata, or a frontend flag.
-Keep service-role exclusively in server configuration; grant only necessary
-operations, validate inputs, rate-limit, and audit privileged changes. Tier
-activation must follow verified payment evidence and an idempotent payment
-webhook, with server-validated tenant, plan, amount, currency, and event identity.
-No role table, Edge Function, service-role, or backend configuration is introduced
-by this patch without architecture approval.
+The user approved preparing backend code for review only. The admin Edge Function
+verifies every GET/PATCH Bearer JWT with Supabase Auth.getUser(token), then calls
+service-role-only RPCs using the verified user ID. SQL rechecks enabled admin
+membership for each operation. Membership and audit tables live in the dedicated
+non-exposed rapikasir_private schema with RLS and no consumer privileges.
+Functions use an empty search_path and SECURITY DEFINER; only service_role has
+EXECUTE, and service credentials are never accepted as a user session or bundled
+in the frontend. Platform verify_jwt remains enabled in config.toml.
+
+GET lists stores with bounded pagination. PATCH accepts only storeId/tier/reason,
+rejects client-supplied identity, limits payloads to 4 KiB, and atomically locks the
+store, changes tier, and writes the audit event. SQL serializes admin mutations
+and limits them to 30 per minute per actor. CORS uses exact configured HTTPS
+origins; it does not replace authentication/authorization. Transport calls have
+10-second timeouts, responses disable caching, and errors disclose no credentials.
+There is no delete endpoint. Existing admin UI stays closed until a separate
+reviewed integration and staging validation.
+
+Migration 4 must be applied **after migration 3 and before deploying the Edge
+Function**, initially to staging under a separate approval. Migration 4 creates
+no admin members. An operator must separately approve and grant a specific
+verified Auth user UUID a membership. Environment ADMIN_ALLOWED_ORIGINS must be
+an exact comma-separated list of HTTPS origins. Hosted legacy SUPABASE_URL,
+SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are server inputs; missing
+configuration closes the endpoint with HTTP 503. Do not add a service-role value
+to Vercel or any VITE variable. No environment values are created or changed by
+this PR. Frontend-only deployment depends on migration 3; migration 4 is an
+additional dependency of the optional admin backend, whose deployment is not
+part of Vercel Preview.
+
+Tier PATCH supports an explicitly authorized **manual administrative assignment**
+with an audit reason. Automated payment activation still requires provider
+selection, signature verification, idempotent webhook processing, and
+server-validated plan/amount/currency/tenant; no payment webhook is implemented.
 
 ## Unresolved risks and verification limits
 
@@ -94,7 +118,9 @@ by this patch without architecture approval.
   fixes alone do not make the live database safe. Until migration 3 is applied,
   the old cross-tenant policy and writable tier may still be exploitable through
   direct API requests even if the new UI is deployed.
-- Admin server authorization and verified billing remain unimplemented.
+- Admin authorization code is prepared and locally tested, but has not been
+  deployed or validated against hosted Supabase. Verified billing remains
+  unimplemented. Admin UI stays closed.
 - Feature/product limits currently enforced in UI require a separately reviewed
   backend enforcement design. This patch secures stored tier, not every paid
   feature's underlying data access.
@@ -118,7 +144,10 @@ by this patch without architecture approval.
   attempts denied admin/tier operations. Prefer a small forward fix or maintenance
   route for affected functions. Preview can simply be superseded by a new branch
   deployment; production rollback requires separate approval.
-- No data migration occurs, so this patch needs no row-data reversal. Database
+- If admin backend is later deployed, first disable/decommission its endpoint
+  or revoke EXECUTE on its two RPCs from service_role under separate approval;
+  retain memberships and audit records. Do not drop audit history during rollback.
+- No application-row data migration occurs, so this patch needs no row-data reversal. Database
   restore is a last-resort operator action under a separate approved recovery plan.
 
 ## References
@@ -128,3 +157,8 @@ by this patch without architecture approval.
 - [Supabase Auth health](https://supabase.com/docs/guides/troubleshooting/how-do-i-check-gotrueapi-version-of-a-supabase-project-lQAnOR)
 - [Vitest migration requirements](https://vitest.dev/guide/migration/)
 - [Vercel Git deployments](https://vercel.com/docs/git)
+
+Browser verification remains pending if Chromium cannot be installed. The local
+installer encountered download timeout/DNS failures; HTTP asset and route smoke
+do not prove actual rendering or authenticated flows. The build also reports
+a large bundle warning, retained for a separate measured performance change.

@@ -1,0 +1,3 @@
+# Review-only configuration; no function is deployed by repository CI.
+[functions.admin]
+verify_jwt = true

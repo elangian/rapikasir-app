@@ -49,7 +49,15 @@ export async function checkSite(value, options) {
   const base = httpsURL(value, "SITE_URL");
   const page = await request(base, "Site root", options);
   assertHTML(page, "Site root");
-  const assets = [...page.body.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/g)].map((m) => m[1]);
+  const assets = [];
+  for (const match of page.body.matchAll(/(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/g)) {
+    const url = new URL(match[1], base);
+    if (url.username || url.password) throw new Error("Site asset: credentials are forbidden");
+    // Vercel injects its optional Preview toolbar independently of app assets.
+    if (url.origin === "https://vercel.live" && url.pathname === "/_next-live/feedback/feedback.js") continue;
+    if (url.origin !== base.origin) throw new Error("Site asset: unexpected external origin");
+    assets.push(url.href);
+  }
   if (!assets.some((a) => /\.js(?:\?|$)/.test(a)) || !assets.some((a) => /\.css(?:\?|$)/.test(a))) {
     throw new Error("Site root: JavaScript and CSS entry assets are required");
   }

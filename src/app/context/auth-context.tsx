@@ -39,7 +39,6 @@ interface AuthContextValue {
   register: (input: { storeName: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
   completeOnboarding: (store: StoreProfile) => Promise<void>;
-  updateTier: (tier: Tier) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -72,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const row = await fetchStoreRow(data.session.user.id);
         if (!mounted) return;
         setStoreRow(row);
-        if (row) setTier(row.tier);
+        setTier(row?.tier ?? "FREE");
       }
       if (mounted) setLoading(false);
     });
@@ -82,9 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newSession?.user) {
         const row = await fetchStoreRow(newSession.user.id);
         setStoreRow(row);
-        if (row) setTier(row.tier);
+        setTier(row?.tier ?? "FREE");
       } else {
         setStoreRow(null);
+        setTier("FREE");
       }
     });
 
@@ -126,19 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login: AuthContextValue["login"] = async ({ email, password }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-  };
-
-  const updateTier: AuthContextValue["updateTier"] = async (tier) => {
-    if (!session?.user) {
-      // No real session (shouldn't normally happen inside the authed app) —
-      // fall back to local-only so the UI doesn't hard-crash.
-      setTier(tier);
-      return;
-    }
-    const { error } = await supabase.from("stores").update({ tier }).eq("id", session.user.id);
-    if (error) throw error;
-    setTier(tier);
-    setStoreRow((prev) => (prev ? { ...prev, tier } : prev));
   };
 
   const completeOnboarding: AuthContextValue["completeOnboarding"] = async (storeInput) => {
@@ -198,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         login,
         completeOnboarding,
-        updateTier,
         logout,
       }}
     >

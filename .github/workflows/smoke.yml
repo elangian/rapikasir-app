@@ -5,23 +5,30 @@ on:
   schedule:
     - cron: "0 1 * * *"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Situs production menjawab
-        run: |
-          URL="https://rapikasir-app.vercel.app"
-          code=$(curl -s -o page.html -w "%{http_code}" "$URL")
-          echo "HTTP status: $code"
-          test "$code" = "200"
-          grep -q 'id="root"' page.html
-          grep -q 'RapiKasir' page.html
-      - name: Supabase terjangkau
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - name: Production HTML, routes, and assets (read-only)
+        env:
+          SITE_URL: https://rapikasir-app.vercel.app
+        run: node scripts/smoke.mjs site
+      - name: Supabase Auth health (read-only; HTTP 200 required)
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-        run: |
-          test -n "$SUPABASE_URL"
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health")
-          echo "Supabase HTTP status: $code"
-          case "$code" in 200|401) exit 0 ;; *) exit 1 ;; esac
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/smoke.mjs supabase

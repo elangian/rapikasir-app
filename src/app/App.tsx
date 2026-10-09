@@ -22,9 +22,6 @@ import { Login } from "./pages/login";
 import { Register } from "./pages/register";
 import { Onboarding } from "./pages/onboarding";
 import { Payment } from "./pages/payment";
-import { AdminDashboard } from "./pages/admin/dashboard";
-import { AdminUsers } from "./pages/admin/users";
-import { AdminSubscriptions } from "./pages/admin/subscriptions";
 
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -59,19 +56,7 @@ function AppLayout() {
   );
 }
 
-/**
- * Route tree branches on auth state (see plans/ Fase 4):
- *  - guest              -> Landing / Login / Register (+ admin, always reachable)
- *  - authed, !onboarded -> forced into Onboarding (+ admin)
- *  - authed, onboarded  -> the existing AppLayout tree (+ /pembayaran, + admin)
- *
- * Admin (06a/b/c) is a separate internal tool, not gated behind the
- * consumer auth flow — same as the original static prototype, where
- * "Keluar" on the admin pages just links back to the marketing site.
- * It IS wrapped in <AdminGate> (passphrase check) in all three branches
- * below since it's reachable on the public deployed URL — see
- * admin-gate.tsx for exactly what that does and doesn't protect against.
- */
+/** Admin routes stay closed until server-side authorization is deployed. */
 function AppRoutes() {
   const { status, onboarded } = useAuth();
 
@@ -81,9 +66,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
-        <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
-        <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
+        <Route path="/admin/*" element={<AdminGate />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -93,9 +76,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
-        <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
-        <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
+        <Route path="/admin/*" element={<AdminGate />} />
         <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
@@ -104,9 +85,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/pembayaran" element={<Payment />} />
-      <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
-      <Route path="/admin/users" element={<AdminGate><AdminUsers /></AdminGate>} />
-      <Route path="/admin/subscriptions" element={<AdminGate><AdminSubscriptions /></AdminGate>} />
+      <Route path="/admin/*" element={<AdminGate />} />
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Navigate to="/" replace />} />
       <Route element={<AppLayout />}>

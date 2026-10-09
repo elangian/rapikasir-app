@@ -24,3 +24,5 @@ pnpm-debug.log*
 # File marker Windows/WSL
 *Zone.Identifier
 rapikasir-src-update-*.zip
+.vercel
+.env*
